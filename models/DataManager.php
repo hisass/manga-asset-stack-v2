@@ -68,52 +68,6 @@ class DataManager {
         return isset($this->data['works']) ? $this->data['works'] : array();
     }
 
-    // 今後、ここに編集・追加・削除などの関数を追加していきます。
-    /*
-    public function getWorkById($work_id) { ... }
-    public function updateWork($work_id, $new_work_data) { ... }
-    */
-
-    /**
-     * 指定されたIDの作品データを更新する
-     * @param string $work_id 更新対象の作品ID
-     * @param array $new_data フォームからPOSTされた新しいデータ
-     * @return bool 成功した場合はtrue, 失敗した場合はfalse
-     */
-    public function updateWork($work_id, $new_data) {
-        $work_found_and_updated = false;
-        
-        // works配列をループし、該当する作品を探して内容を更新
-        foreach ($this->data['works'] as $index => $work) {
-            if (isset($work['work_id']) && $work['work_id'] === $work_id) {
-                
-                // フォームから送られてきた値で各項目を上書き
-                $this->data['works'][$index]['title'] = isset($new_data['title']) ? $new_data['title'] : '';
-                $this->data['works'][$index]['title_ruby'] = isset($new_data['title_ruby']) ? $new_data['title_ruby'] : '';
-                $this->data['works'][$index]['author'] = isset($new_data['author']) ? $new_data['author'] : '';
-                $this->data['works'][$index]['author_ruby'] = isset($new_data['author_ruby']) ? $new_data['author_ruby'] : '';
-                $this->data['works'][$index]['category_id'] = isset($new_data['category_id']) ? $new_data['category_id'] : '';
-                $this->data['works'][$index]['comment'] = isset($new_data['comment']) ? $new_data['comment'] : '';
-                // 他のキーも同様に追加可能
-
-                $work_found_and_updated = true;
-                break; // 対象を見つけたらループを抜ける
-            }
-        }
-
-        // 作品が見つかり、更新された場合のみ、ファイル全体を保存する
-        if ($work_found_and_updated) {
-            return $this->saveData();
-        }
-
-        return false; // 作品が見つからなかった場合
-    }
-
-    /**
-     * 指定されたwork_idを持つ作品を1件取得する
-     * @param string $work_id
-     * @return array|null 作品データ、見つからなければnull
-     */
     public function getWorkById($work_id) {
         if (isset($this->data['works'])) {
             foreach ($this->data['works'] as $work) {
@@ -125,20 +79,36 @@ class DataManager {
         return null; // 見つからなかった場合
     }
 
-    /**
-     * 新しい作品データを追加する
-     * @param array $new_data フォームからPOSTされた新しいデータ
-     * @return bool 成功した場合はtrue, 失敗した場合はfalse
-     */
+    public function updateWork($work_id, $new_data) {
+        $work_found_and_updated = false;
+        
+        foreach ($this->data['works'] as $index => $work) {
+            if (isset($work['work_id']) && $work['work_id'] === $work_id) {
+                
+                $this->data['works'][$index]['title'] = isset($new_data['title']) ? $new_data['title'] : '';
+                $this->data['works'][$index]['title_ruby'] = isset($new_data['title_ruby']) ? $new_data['title_ruby'] : '';
+                $this->data['works'][$index]['author'] = isset($new_data['author']) ? $new_data['author'] : '';
+                $this->data['works'][$index]['author_ruby'] = isset($new_data['author_ruby']) ? $new_data['author_ruby'] : '';
+                $this->data['works'][$index]['category_id'] = isset($new_data['category_id']) ? $new_data['category_id'] : '';
+                $this->data['works'][$index]['comment'] = isset($new_data['comment']) ? $new_data['comment'] : '';
+
+                $work_found_and_updated = true;
+                break;
+            }
+        }
+
+        if ($work_found_and_updated) {
+            return $this->saveData();
+        }
+
+        return false;
+    }
+
     public function addWork($new_data) {
         $work_id = isset($new_data['work_id']) ? trim($new_data['work_id']) : '';
-
-        // 作品IDが空、または既に存在する場合はエラーとしてfalseを返す
         if (empty($work_id) || $this->getWorkById($work_id) !== null) {
             return false; 
         }
-
-        // 保存する新しい作品のデータを作成
         $new_work_entry = array(
             'work_id'     => $work_id,
             'title'       => isset($new_data['title']) ? $new_data['title'] : '',
@@ -147,18 +117,44 @@ class DataManager {
             'author_ruby' => isset($new_data['author_ruby']) ? $new_data['author_ruby'] : '',
             'category_id' => isset($new_data['category_id']) ? $new_data['category_id'] : '',
             'comment'     => isset($new_data['comment']) ? $new_data['comment'] : '',
-            // デフォルト値や空値を設定しておくキー
             'title_id'    => '',
             'copyright'   => '',
-            'open'        => date('Y-m-d'), // とりあえず今日の日付
-            'path'        => '' // パスは後から編集することを想定
+            'open'        => date('Y-m-d'),
+            'path'        => ''
         );
-
-        // works配列の末尾に新しい作品を追加
         $this->data['works'][] = $new_work_entry;
-
-        // 変更をファイルに保存する
         return $this->saveData();
     }
 
+    public function deleteWork($work_id) {
+        $work_found = false;
+        $works = $this->getWorks();
+        foreach ($works as $index => $work) {
+            if (isset($work['work_id']) && $work['work_id'] === $work_id) {
+                array_splice($this->data['works'], $index, 1);
+                $work_found = true;
+                break;
+            }
+        }
+        if ($work_found) {
+            return $this->saveData();
+        }
+        return false;
+    }
+
+    /**
+     * 指定されたcategory_idを持つカテゴリを1件取得する
+     * @param string $category_id
+     * @return array|null カテゴリデータ、見つからなければnull
+     */
+    public function getCategoryById($category_id) {
+        if (isset($this->data['categories'])) {
+            foreach ($this->data['categories'] as $category) {
+                if (isset($category['id']) && $category['id'] === $category_id) {
+                    return $category;
+                }
+            }
+        }
+        return null; // 見つからなかった場合
+    }
 }
