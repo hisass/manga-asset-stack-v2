@@ -72,18 +72,43 @@ class DataManager {
      * @param int $offset 開始位置
      * @return array 絞り込まれた作品のリスト
      */
-    public function getWorks($sort_key = 'open', $sort_order = 'desc', $limit = 20, $offset = 0) {
+    public function getWorks($sort_key = 'open', $sort_order = 'desc', $limit = 9999, $offset = 0) {
         $works = isset($this->data['works']) ? $this->data['works'] : array();
 
-        // ソート処理
+        //【修正】ソート処理のバグを修正
         usort($works, $this->buildSorter($sort_key, $sort_order));
 
         // ページネーション処理
         return array_slice($works, $offset, $limit);
     }
+    
+    /**
+     * 【新規追加】カテゴリに紐づく有効な作品の総数を取得する
+     * @return int
+     */
+    public function getValidWorkCount() {
+        $all_works = isset($this->data['works']) ? $this->data['works'] : array();
+        $all_categories = $this->getCategories();
+
+        // 有効なカテゴリIDのリストを作成
+        $valid_category_ids = array();
+        foreach ($all_categories as $category) {
+            $valid_category_ids[] = $category['id'];
+        }
+
+        $valid_count = 0;
+        foreach ($all_works as $work) {
+            // 作品にカテゴリIDがあり、かつそれが有効なカテゴリリストに含まれているかチェック
+            if (isset($work['category_id']) && in_array($work['category_id'], $valid_category_ids)) {
+                $valid_count++;
+            }
+        }
+        return $valid_count;
+    }
+
 
     /**
-     * 全作品の総数を取得する
+     * 全作品の総数を取得する（このメソッドは今回使用しない）
      */
     public function getTotalWorkCount() {
         return isset($this->data['works']) ? count($this->data['works']) : 0;

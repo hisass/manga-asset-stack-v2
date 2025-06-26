@@ -9,46 +9,50 @@ class AdminController {
     public function dashboard() {
         $data['title'] = '管理ダッシュボード';
 
-        // 1. ソート順を決定
-        $sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open';
-        $sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc';
-
-        // 2.【変更点】ソートされた全作品を一度だけ取得
-        // DataManagerに全件取得用のメソッドがないため、getWorksを大きな件数で代用
-        $all_works = $this->dataManager->getWorks($sort_key, $sort_order, 9999, 0);
-        $total_works = count($all_works);
-
-        // 3. ページネーションの計算
+        // 1. パラメータを受け取る
         $page_num = isset($_GET['page_num']) ? (int)$_GET['page_num'] : 1;
-        $items_per_page = 20;
+        $items_per_page = 20; // 1ページの表示件数
+        $sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open'; // デフォルトは公開日
+        $sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc'; // デフォルトは降順
+
+        // 2.【修正】有効な作品の総数を取得する
+        $total_works = $this->dataManager->getValidWorkCount();
         $total_pages = ceil($total_works / $items_per_page);
+        
+        // 3. 表示する作品データを取得する
+        // 全作品を取得してから、カテゴリでフィルタリングし、ソートし、ページで切り出す
+        $all_works = $this->dataManager->getWorks($sort_key, $sort_order, 9999, 0);
 
-            // ↓↓↓↓ ここからデバッグ用コード ↓↓↓↓
-            echo "デバッグ情報 --> Total Works: " . $total_works . " | Items Per Page: " . $items_per_page . " | Calculated Pages: " . $total_pages;
-            var_dump($total_works, $items_per_page, $total_pages);
-            exit;
-            // ↑↑↑↑ ここまでデバッグ用コード ↑↑↑↑
-
-        $offset = ($page_num - 1) * $items_per_page;
-
-        // 4.【変更点】現在のページに表示する作品を、全作品配列から切り出す
-        $works_for_page = array_slice($all_works, $offset, $items_per_page);
-
-        // 5.【変更点】カテゴリ情報と作品数集計を、全作品配列から行う
         $categories = $this->dataManager->getCategories();
+        $valid_category_ids = array();
+        foreach ($categories as $category) {
+            $valid_category_ids[] = $category['id'];
+        }
+
+        // カテゴリを持つ作品だけをフィルタリング
+        $valid_works = array();
+        foreach ($all_works as $work) {
+            if (isset($work['category_id']) && in_array($work['category_id'], $valid_category_ids)) {
+                $valid_works[] = $work;
+            }
+        }
+        
+        // ページに表示する分だけを切り出す
+        $offset = ($page_num - 1) * $items_per_page;
+        $works_for_page = array_slice($valid_works, $offset, $items_per_page);
+
+        // 4. カテゴリごとの作品数を集計する
         $category_work_counts = array();
         foreach ($categories as $category) {
             $category_work_counts[$category['id']] = 0;
         }
-        foreach ($all_works as $work) { // 取得済みの$all_worksを再利用
-            if (isset($work['category_id']) && isset($category_work_counts[$work['category_id']])) {
-                $category_work_counts[$work['category_id']]++;
-            }
+        foreach ($valid_works as $work) {
+            $category_work_counts[$work['category_id']]++;
         }
         
-        // 6. ビューに渡すデータをセット
+        // 5. ビューに渡すデータをセットする
         $data['categories'] = $categories;
-        $data['works'] = $works_for_page; // ページ分割された作品を渡す
+        $data['works'] = $works_for_page; // ページ分割された作品
         $data['category_work_counts'] = $category_work_counts;
         $data['total_pages'] = $total_pages;
         $data['current_page'] = $page_num;
@@ -175,4 +179,4 @@ class AdminController {
         require_once $baseDir . "{$viewName}.php";
         require_once $baseDir . "layouts/footer.php";
     }
-}       
+}
