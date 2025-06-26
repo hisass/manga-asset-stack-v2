@@ -112,3 +112,51 @@
 .work-card-link:hover .card {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
+
+/* --- 管理画面のページネーション表示崩れを強制的に修正するCSS --- */
+
+/* ページャー全体をフレックスボックスとして中央揃えに */
+.pagination {
+    display: flex;
+    justify-content: center;
+    padding-left: 0;
+    list-style: none;
+    border-radius: .25rem;
+}
+
+/* 各ページ番号の余白と色 */
+.page-item .page-link {
+    position: relative;
+    display: block;
+    padding: .5rem .75rem;
+    margin-left: -1px;
+    line-height: 1.25;
+    color: #0d6efd; /* Bootstrapの標準的なリンク色 */
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    transition: all .2s ease-in-out;
+}
+
+/* マウスオーバー時のスタイル */
+.page-item .page-link:hover {
+    z-index: 2;
+    color: #0a58ca;
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+
+/* 現在のページ（アクティブ）のスタイル */
+.page-item.active .page-link {
+    z-index: 3;
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* 無効化されたボタン（「前へ」「次へ」の端）のスタイル */
+.page-item.disabled .page-link {
+    color: #6c757d;
+    pointer-events: none;
+    background-color: #fff;
+    border-color: #dee2e6;
+}
