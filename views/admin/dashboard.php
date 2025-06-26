@@ -45,6 +45,7 @@
         <thead class="table-dark">
             <tr>
                 <?php
+                // このヘルパー関数はここにないとエラーになるため残しますが、リンクのclassを修正します
                 function sort_link($label, $key, $current_key, $current_order) {
                     $order = ($key === $current_key && $current_order === 'asc') ? 'desc' : 'asc';
                     $icon = '';
@@ -69,7 +70,7 @@
                         $is_new = false;
                         if (!empty($work['open'])) {
                             $open_timestamp = strtotime($work['open']);
-                            if (time() - $open_timestamp < (60 * 60 * 24 * 7)) {
+                            if (time() - $open_timestamp < (60 * 60 * 24 * 7)) { // 7日間
                                 $is_new = true;
                             }
                         }

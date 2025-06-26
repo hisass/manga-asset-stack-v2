@@ -115,7 +115,6 @@
 
 /* --- 管理画面のページネーション表示崩れを強制的に修正するCSS --- */
 
-/* ページャー全体をフレックスボックスとして中央揃えに */
 .pagination {
     display: flex;
     justify-content: center;
@@ -124,7 +123,6 @@
     border-radius: .25rem;
 }
 
-/* 各ページ番号の余白と色 */
 .page-item .page-link {
     position: relative;
     display: block;
@@ -135,9 +133,9 @@
     background-color: #fff;
     border: 1px solid #dee2e6;
     transition: all .2s ease-in-out;
+    text-decoration: none; /* 下線を消す */
 }
 
-/* マウスオーバー時のスタイル */
 .page-item .page-link:hover {
     z-index: 2;
     color: #0a58ca;
@@ -145,7 +143,6 @@
     border-color: #dee2e6;
 }
 
-/* 現在のページ（アクティブ）のスタイル */
 .page-item.active .page-link {
     z-index: 3;
     color: #fff;
@@ -153,7 +150,6 @@
     border-color: #0d6efd;
 }
 
-/* 無効化されたボタン（「前へ」「次へ」の端）のスタイル */
 .page-item.disabled .page-link {
     color: #6c757d;
     pointer-events: none;
