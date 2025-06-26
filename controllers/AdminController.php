@@ -14,42 +14,34 @@ class AdminController {
         $items_per_page = 20;
         $sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open';
         $sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc';
+        $filter_category = isset($_GET['filter_category']) ? $_GET['filter_category'] : null;
+        $search_keyword = isset($_GET['search']) && trim($_GET['search']) !== '' ? trim($_GET['search']) : null;
 
-        // 2. 表示に必要なデータを取得する
-        $all_works = $this->dataManager->getWorks($sort_key, $sort_order, 9999, 0);
-        $categories = $this->dataManager->getCategories();
-        $valid_category_ids = array();
-        foreach ($categories as $category) {
-            $valid_category_ids[] = $category['id'];
-        }
+        // 2. フィルタリングとソートをして作品リストを取得
+        $all_filtered_works = $this->dataManager->getWorks($filter_category, $search_keyword, $sort_key, $sort_order);
 
-        // 3.【最終・修正】より確実な方法で、カテゴリを持つ作品だけをフィルタリングする
-        $valid_works = array();
-        $valid_category_id_map = array_flip($valid_category_ids); // 高速な検索のために配列を変換
-        foreach ($all_works as $work) {
-            // issetを使うことで、高速かつ厳密なチェックを行う
-            if (isset($work['category_id']) && isset($valid_category_id_map[$work['category_id']])) {
-                $valid_works[] = $work;
-            }
-        }
-
-        // 4. 正しい総作品数からページネーションを計算する
-        $total_works = count($valid_works);
+        // 3. ページネーションを計算
+        $total_works = count($all_filtered_works);
         $total_pages = ceil($total_works / $items_per_page);
         
-        // 5. 現在のページに表示する分だけを切り出す
+        // 4. 現在のページに表示する分だけを切り出す
         $offset = ($page_num - 1) * $items_per_page;
-        $works_for_page = array_slice($valid_works, $offset, $items_per_page);
+        $works_for_page = array_slice($all_filtered_works, $offset, $items_per_page);
 
-        // 6. カテゴリごとの作品数を集計する
-        $category_work_counts = array_fill_keys($valid_category_ids, 0);
-        foreach ($valid_works as $work) {
-            if (isset($category_work_counts[$work['category_id']])) {
+        // 5. カテゴリごとの作品数を集計する (これは全作品から)
+        $all_works = $this->dataManager->getWorks(); // 集計用に全件取得
+        $categories = $this->dataManager->getCategories();
+        $category_work_counts = array();
+        foreach ($categories as $category) {
+            $category_work_counts[$category['id']] = 0;
+        }
+        foreach ($all_works as $work) {
+            if (isset($work['category_id']) && isset($category_work_counts[$work['category_id']])) {
                 $category_work_counts[$work['category_id']]++;
             }
         }
         
-        // 7. ビューに渡すデータをセットする
+        // 6. ビューに渡すデータをセット
         $data['categories'] = $categories;
         $data['works'] = $works_for_page;
         $data['category_work_counts'] = $category_work_counts;
@@ -57,10 +49,13 @@ class AdminController {
         $data['current_page'] = $page_num;
         $data['current_sort_key'] = $sort_key;
         $data['current_sort_order'] = $sort_order;
+        $data['current_filter_category'] = $filter_category;
+        $data['current_search_keyword'] = $search_keyword;
         
         $this->loadView('dashboard', $data);
     }
 
+    // ... (他のメソッドは変更なし) ...
     public function addWork() {
         $data['title'] = '作品の新規追加';
         $data['work'] = array(
@@ -170,7 +165,7 @@ class AdminController {
             die('Error: カテゴリの更新に失敗しました。');
         }
     }
-
+    
     private function loadView($viewName, $data = array()) {
         extract($data, EXTR_SKIP);
         $baseDir = BASE_DIR_PATH . '/views/admin/';

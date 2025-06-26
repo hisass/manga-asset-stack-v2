@@ -2,137 +2,93 @@
 
 class DataManager {
     private $data_file_path;
-    private $data = array(); // 全てのJSONデータを保持するプロパティ
+    private $data = array();
 
-    /**
-     * コンストラクタ
-     * ファイルパスを設定し、既存のデータを読み込む
-     */
     public function __construct() {
-        // 新しいデータファイルのパスを定義
-        // config.phpが読み込まれている前提
         $this->data_file_path = BASE_DIR_PATH . '/data/sozai_v2.json';
         $this->loadData();
     }
 
-    /**
-     * JSONファイルを読み込み、クラスのプロパティにセットする
-     * @return bool 成功した場合はtrue, 失敗した場合はfalse
-     */
     private function loadData() {
         if (!file_exists($this->data_file_path)) {
-            // ファイルが存在しない場合は、空の基本構造で初期化
             $this->data = array('categories' => array(), 'works' => array());
             return true;
         }
-
         $json_string = file_get_contents($this->data_file_path);
         if (empty($json_string)) {
             $this->data = array('categories' => array(), 'works' => array());
             return true;
         }
-
         $decoded_data = json_decode($json_string, true);
-
         if (json_last_error() === JSON_ERROR_NONE) {
             $this->data = $decoded_data;
-            return true;
         } else {
-            // JSONデコードに失敗した場合は、データを空にしておく
             $this->data = array('categories' => array(), 'works' => array());
             return false;
         }
+        return true;
     }
 
-    /**
-     * 現在のデータをJSONファイルに上書き保存する（ファイルロック付き）
-     * @return bool 成功した場合はtrue, 失敗した場合はfalse
-     */
     public function saveData() {
-        // PHP 5.3ではJSON整形オプションが使えないため、シンプルなエンコードを行う
         $json_string = json_encode($this->data);
-
-        // LOCK_EXは、他のプロセスが同時に書き込むのを防ぐためのファイルロック
-        $result = file_put_contents($this->data_file_path, $json_string, LOCK_EX);
-
-        return $result !== false;
+        return file_put_contents($this->data_file_path, $json_string, LOCK_EX) !== false;
     }
-    
-    // --- データ取得（Getter）関数 ---
 
     public function getCategories() {
         return isset($this->data['categories']) ? $this->data['categories'] : array();
     }
-    
+
     /**
-     * 作品リストを、ソートとページネーションを適用して取得する
+     * 作品リストを、フィルタリング、ソート、ページネーションを適用して取得する
+     * @param string|null $category_id 絞り込むカテゴリのID
+     * @param string|null $search_keyword 検索キーワード
      * @param string $sort_key 並び替えのキー
      * @param string $sort_order 昇順(asc)か降順(desc)か
-     * @param int $limit 1ページあたりの表示件数
-     * @param int $offset 開始位置
      * @return array 絞り込まれた作品のリスト
      */
-    public function getWorks($sort_key = 'open', $sort_order = 'desc', $limit = 9999, $offset = 0) {
+    public function getWorks($category_id = null, $search_keyword = null, $sort_key = 'open', $sort_order = 'desc') {
         $works = isset($this->data['works']) ? $this->data['works'] : array();
 
-        //【修正】ソート処理のバグを修正
+        // 1. カテゴリによるフィルタリング
+        if ($category_id !== null && $category_id !== '') {
+            $works = array_filter($works, function($work) use ($category_id) {
+                return isset($work['category_id']) && $work['category_id'] === $category_id;
+            });
+        }
+        
+        // 2. キーワードによるフィルタリング
+        if ($search_keyword !== null && $search_keyword !== '') {
+            $works = array_filter($works, function($work) use ($search_keyword) {
+                // タイトル、作品ID、著者名に含まれているかチェック（大文字小文字を区別しない）
+                $title = isset($work['title']) ? $work['title'] : '';
+                $work_id = isset($work['work_id']) ? $work['work_id'] : '';
+                $author = isset($work['author']) ? $work['author'] : '';
+                return (
+                    stripos($title, $search_keyword) !== false ||
+                    stripos($work_id, $search_keyword) !== false ||
+                    stripos($author, $search_keyword) !== false
+                );
+            });
+        }
+        
+        // 3. ソート処理
         usort($works, $this->buildSorter($sort_key, $sort_order));
 
-        // ページネーション処理
-        return array_slice($works, $offset, $limit);
+        return $works;
     }
     
-    /**
-     * 【新規追加】カテゴリに紐づく有効な作品の総数を取得する
-     * @return int
-     */
-    public function getValidWorkCount() {
-        $all_works = isset($this->data['works']) ? $this->data['works'] : array();
-        $all_categories = $this->getCategories();
-
-        // 有効なカテゴリIDのリストを作成
-        $valid_category_ids = array();
-        foreach ($all_categories as $category) {
-            $valid_category_ids[] = $category['id'];
-        }
-
-        $valid_count = 0;
-        foreach ($all_works as $work) {
-            // 作品にカテゴリIDがあり、かつそれが有効なカテゴリリストに含まれているかチェック
-            if (isset($work['category_id']) && in_array($work['category_id'], $valid_category_ids)) {
-                $valid_count++;
-            }
-        }
-        return $valid_count;
-    }
-
-
-    /**
-     * 全作品の総数を取得する（このメソッドは今回使用しない）
-     */
-    public function getTotalWorkCount() {
-        return isset($this->data['works']) ? count($this->data['works']) : 0;
-    }
-
-    /**
-     * usortで使うための比較関数を生成するヘルパー
-     */
     private function buildSorter($key, $order) {
         return function ($a, $b) use ($key, $order) {
             $val_a = isset($a[$key]) ? $a[$key] : '';
             $val_b = isset($b[$key]) ? $b[$key] : '';
 
-            // 日付の場合はタイムスタンプに変換して比較
             if ($key === 'open') {
                 $val_a = strtotime($val_a);
                 $val_b = strtotime($val_b);
             }
 
-            if ($val_a == $val_b) {
-                return 0;
-            }
+            if ($val_a == $val_b) return 0;
 
-            // 降順(desc)の場合は順序を逆転
             if ($order === 'desc') {
                 return ($val_a > $val_b) ? -1 : 1;
             } else {
@@ -140,7 +96,6 @@ class DataManager {
             }
         };
     }
-
 
     public function getWorkById($work_id) {
         if (isset($this->data['works'])) {
@@ -150,9 +105,10 @@ class DataManager {
                 }
             }
         }
-        return null; // 見つからなかった場合
+        return null;
     }
 
+    // ... (addWork, updateWork, deleteWorkなどの他のメソッドは変更なし) ...
     public function updateWork($work_id, $new_data) {
         $work_found_and_updated = false;
         
