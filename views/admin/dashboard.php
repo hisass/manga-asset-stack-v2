@@ -10,7 +10,7 @@
             <tr>
                 <th>ID</th>
                 <th>カテゴリ名</th>
-                <th>略称 (alias)</th>
+                <th>登録作品数</th> <th>略称 (alias)</th>
                 <th>トップ表示数 (title_count)</th>
                 <th>操作</th>
             </tr>
@@ -20,6 +20,7 @@
                 <tr>
                     <td><?= htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars($category_work_counts[$category['id']], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($category['alias'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($category['title_count'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>

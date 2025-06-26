@@ -39,11 +39,11 @@ switch ($action) {
         $controller->editCategory($category_id);
         break;
         
-    case 'create_category': // ▼▼▼ この3行を追加 ▼▼▼
+    case 'create_category':
         $controller->createCategory($_POST);
         break;
 
-    case 'save_category': // ▼▼▼ この3行を追加 ▼▼▼
+    case 'save_category':
         $controller->saveCategory($_POST);
         break;
         

@@ -8,9 +8,31 @@ class AdminController {
 
     public function dashboard() {
         $data['title'] = '管理ダッシュボード';
-        $data['categories'] = $this->dataManager->getCategories();
-        $data['works'] = $this->dataManager->getWorks();
+        $categories = $this->dataManager->getCategories();
+        $works = $this->dataManager->getWorks();
+
+        // ▼▼▼ ここからが追加・修正箇所です ▼▼▼
+
+        // カテゴリごとの作品数を集計するための配列を準備
+        $category_work_counts = array();
+        foreach ($categories as $category) {
+            $category_work_counts[$category['id']] = 0; // まずは0で初期化
+        }
+
+        // 全作品をループして、カテゴリIDごとにカウントアップ
+        foreach ($works as $work) {
+            if (isset($work['category_id']) && isset($category_work_counts[$work['category_id']])) {
+                $category_work_counts[$work['category_id']]++;
+            }
+        }
+
+        // ビューに渡すデータ
+        $data['categories'] = $categories;
+        $data['works'] = $works;
+        $data['category_work_counts'] = $category_work_counts; // 集計結果をビューに渡す
         
+        // ▲▲▲ ここまでが追加・修正箇所です ▲▲▲
+
         $this->loadView('dashboard', $data);
     }
 
@@ -99,9 +121,6 @@ class AdminController {
         $this->loadView('edit_category_form', $data);
     }
 
-    /**
-     * 新しいカテゴリを作成（保存）する
-     */
     public function createCategory($postData) {
         $success = $this->dataManager->addCategory($postData);
         if ($success) {
@@ -112,9 +131,6 @@ class AdminController {
         }
     }
 
-    /**
-     * 既存のカテゴリの変更を保存する
-     */
     public function saveCategory($postData) {
         $category_id = isset($postData['id']) ? $postData['id'] : null;
         if (!$category_id) {
