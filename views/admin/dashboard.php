@@ -13,6 +13,55 @@ function sort_link($label, $key, $current_key, $current_order) {
     $page_num_param = isset($_GET['page_num']) ? '&page_num=' . (int)$_GET['page_num'] : '';
     return '<a href="admin.php?sort=' . $key . '&order=' . $order . $page_num_param . '" class="text-white text-decoration-none">' . $label . $icon . '</a>';
 }
+
+/**
+ * 【新規追加】ページネーションの表示ロジック
+ */
+function render_pagination($current_page, $total_pages, $current_sort_key, $current_sort_order) {
+    if ($total_pages <= 1) {
+        return;
+    }
+
+    $window = 2; // 現在のページの前後に表示するページ数
+    $start = max(1, $current_page - $window);
+    $end = min($total_pages, $current_page + $window);
+    
+    $base_url = "admin.php?sort={$current_sort_key}&order={$current_sort_order}";
+
+    echo '<ul class="pagination justify-content-center">';
+    
+    // 「前へ」リンク
+    $prev_class = ($current_page <= 1) ? 'disabled' : '';
+    echo "<li class=\"page-item {$prev_class}\"><a class=\"page-link\" href=\"{$base_url}&page_num=" . ($current_page - 1) . "\">前へ</a></li>";
+
+    // 最初のページへのリンクと区切り
+    if ($start > 1) {
+        echo "<li class=\"page-item\"><a class=\"page-link\" href=\"{$base_url}&page_num=1\">1</a></li>";
+        if ($start > 2) {
+            echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+
+    // ページ番号のループ
+    for ($i = $start; $i <= $end; $i++) {
+        $active_class = ($i == $current_page) ? 'active' : '';
+        echo "<li class=\"page-item {$active_class}\"><a class=\"page-link\" href=\"{$base_url}&page_num={$i}\">{$i}</a></li>";
+    }
+
+    // 最後のページへのリンクと区切り
+    if ($end < $total_pages) {
+        if ($end < $total_pages - 1) {
+            echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+        echo "<li class=\"page-item\"><a class=\"page-link\" href=\"{$base_url}&page_num={$total_pages}\">{$total_pages}</a></li>";
+    }
+    
+    // 「次へ」リンク
+    $next_class = ($current_page >= $total_pages) ? 'disabled' : '';
+    echo "<li class=\"page-item {$next_class}\"><a class=\"page-link\" href=\"{$base_url}&page_num=" . ($current_page + 1) . "\">次へ</a></li>";
+
+    echo '</ul>';
+}
 ?>
 <h1 class="mb-4"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
 
@@ -38,7 +87,7 @@ function sort_link($label, $key, $current_key, $current_order) {
                 <tr>
                     <td><?= htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><?= htmlspecialchars($category_work_counts[$category['id']], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars(isset($category_work_counts[$category['id']]) ? $category_work_counts[$category['id']] : 0, ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= isset($category['directory_name']) ? htmlspecialchars($category['directory_name'], ENT_QUOTES, 'UTF-8') : '' ?></td>
                     <td><?= htmlspecialchars($category['alias'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($category['title_count'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -56,7 +105,6 @@ function sort_link($label, $key, $current_key, $current_order) {
         <h2>作品一覧</h2>
         <a href="admin.php?action=add_work" class="btn btn-primary btn-sm">作品を新規追加</a>
     </div>
-
     <table class="table table-striped table-bordered table-sm">
         <thead class="table-dark">
             <tr>
@@ -118,22 +166,8 @@ function sort_link($label, $key, $current_key, $current_order) {
             <?php endif; ?>
         </tbody>
     </table>
-
+    
     <nav aria-label="Page navigation">
-        <ul class="pagination justify-content-center">
-            <?php if ($total_pages > 1): ?>
-                <li class="page-item <?= ($current_page <= 1) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="admin.php?page_num=<?= $current_page - 1 ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>">前へ</a>
-                </li>
-                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <li class="page-item <?= ($i == $current_page) ? 'active' : '' ?>">
-                        <a class="page-link" href="admin.php?page_num=<?= $i ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>"><?= $i ?></a>
-                    </li>
-                <?php endfor; ?>
-                <li class="page-item <?= ($current_page >= $total_pages) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="admin.php?page_num=<?= $current_page + 1 ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>">次へ</a>
-                </li>
-            <?php endif; ?>
-        </ul>
+        <?php render_pagination($current_page, $total_pages, $current_sort_key, $current_sort_order); ?>
     </nav>
 </section>

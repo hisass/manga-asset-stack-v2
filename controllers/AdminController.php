@@ -23,16 +23,17 @@ class AdminController {
             $valid_category_ids[] = $category['id'];
         }
 
-        // 3.【最終修正】カテゴリを持つ作品だけを「厳密に」フィルタリングする
+        // 3.【最終・修正】より確実な方法で、カテゴリを持つ作品だけをフィルタリングする
         $valid_works = array();
+        $valid_category_id_map = array_flip($valid_category_ids); // 高速な検索のために配列を変換
         foreach ($all_works as $work) {
-            // in_arrayの3番目の引数に「true」を追加し、厳密な型比較を行う
-            if (isset($work['category_id']) && in_array($work['category_id'], $valid_category_ids, true)) {
+            // issetを使うことで、高速かつ厳密なチェックを行う
+            if (isset($work['category_id']) && isset($valid_category_id_map[$work['category_id']])) {
                 $valid_works[] = $work;
             }
         }
 
-        // 4. ページネーションを計算する
+        // 4. 正しい総作品数からページネーションを計算する
         $total_works = count($valid_works);
         $total_pages = ceil($total_works / $items_per_page);
         
@@ -41,11 +42,8 @@ class AdminController {
         $works_for_page = array_slice($valid_works, $offset, $items_per_page);
 
         // 6. カテゴリごとの作品数を集計する
-        $category_work_counts = array();
-        foreach ($categories as $category) {
-            $category_work_counts[$category['id']] = 0;
-        }
-        foreach ($valid_works as $work) { // 集計も有効な作品リストから行う
+        $category_work_counts = array_fill_keys($valid_category_ids, 0);
+        foreach ($valid_works as $work) {
             if (isset($category_work_counts[$work['category_id']])) {
                 $category_work_counts[$work['category_id']]++;
             }
