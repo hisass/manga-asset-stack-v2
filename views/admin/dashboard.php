@@ -115,15 +115,17 @@
                 <li class="page-item <?= ($current_page <= 1) ? 'disabled' : '' ?>">
                     <a class="page-link" href="admin.php?page_num=<?= $current_page - 1 ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>">前へ</a>
                 </li>
+
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                     <li class="page-item <?= ($i == $current_page) ? 'active' : '' ?>">
                         <a class="page-link" href="admin.php?page_num=<?= $i ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>"><?= $i ?></a>
                     </li>
                 <?php endfor; ?>
+
                 <li class="page-item <?= ($current_page >= $total_pages) ? 'disabled' : '' ?>">
                     <a class="page-link" href="admin.php?page_num=<?= $current_page + 1 ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>">次へ</a>
                 </li>
             <?php endif; ?>
         </ul>
     </nav>
-    </section>
+</section>
