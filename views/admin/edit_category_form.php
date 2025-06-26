@@ -21,7 +21,12 @@ $submit_text = $is_new ? 'カテゴリを追加' : '変更を保存';
         <input type="text" class="form-control" id="alias" name="alias" value="<?= htmlspecialchars($category['alias'], ENT_QUOTES, 'UTF-8') ?>">
         <div class="form-text">ナビゲーションバーに表示される短い名前です。</div>
     </div>
-    
+
+    <div class="mb-3">
+        <label for="directory_name" class="form-label fw-bold">フォルダ名</label>
+        <input type="text" class="form-control" id="directory_name" name="directory_name" value="<?= isset($category['directory_name']) ? htmlspecialchars($category['directory_name'], ENT_QUOTES, 'UTF-8') : '' ?>">
+        <div class="form-text">/contents/ 以下に作成されるフォルダの名前です。半角英数字とハイフンのみ使用してください。</div>
+    </div>
     <div class="mb-3">
         <label for="title_count" class="form-label fw-bold">トップ表示数 (title_count)</label>
         <input type="number" class="form-control" id="title_count" name="title_count" value="<?= htmlspecialchars($category['title_count'], ENT_QUOTES, 'UTF-8') ?>" min="0" required>

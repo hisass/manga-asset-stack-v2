@@ -164,6 +164,7 @@ class DataManager {
             'id' => $new_id,
             'name' => isset($new_data['name']) ? $new_data['name'] : '',
             'alias' => isset($new_data['alias']) ? $new_data['alias'] : '',
+            'directory_name' => isset($new_data['directory_name']) ? $new_data['directory_name'] : '', // ▼▼▼ 追加 ▼▼▼
             'title_count' => isset($new_data['title_count']) ? (int)$new_data['title_count'] : 0,
         );
 
@@ -180,6 +181,7 @@ class DataManager {
             if (isset($category['id']) && $category['id'] === $category_id) {
                 $this->data['categories'][$index]['name'] = isset($new_data['name']) ? $new_data['name'] : '';
                 $this->data['categories'][$index]['alias'] = isset($new_data['alias']) ? $new_data['alias'] : '';
+                $this->data['categories'][$index]['directory_name'] = isset($new_data['directory_name']) ? $new_data['directory_name'] : ''; // ▼▼▼ 追加 ▼▼▼
                 $this->data['categories'][$index]['title_count'] = isset($new_data['title_count']) ? (int)$new_data['title_count'] : 0;
                 $category_found_and_updated = true;
                 break;

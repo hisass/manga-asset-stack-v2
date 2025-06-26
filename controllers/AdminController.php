@@ -11,8 +11,6 @@ class AdminController {
         $categories = $this->dataManager->getCategories();
         $works = $this->dataManager->getWorks();
 
-        // ▼▼▼ ここからが追加・修正箇所です ▼▼▼
-
         // カテゴリごとの作品数を集計するための配列を準備
         $category_work_counts = array();
         foreach ($categories as $category) {
@@ -31,8 +29,6 @@ class AdminController {
         $data['works'] = $works;
         $data['category_work_counts'] = $category_work_counts; // 集計結果をビューに渡す
         
-        // ▲▲▲ ここまでが追加・修正箇所です ▲▲▲
-
         $this->loadView('dashboard', $data);
     }
 
@@ -107,8 +103,9 @@ class AdminController {
         $is_new = ($category_id === null);
         if ($is_new) {
             $data['title'] = 'カテゴリの新規追加';
+            // ▼▼▼ 'directory_name'を追加 ▼▼▼
             $data['category'] = array(
-                'id' => '', 'name' => '', 'alias' => '', 'title_count' => 0
+                'id' => '', 'name' => '', 'alias' => '', 'directory_name' => '', 'title_count' => 0
             );
         } else {
             $category = $this->dataManager->getCategoryById($category_id);
