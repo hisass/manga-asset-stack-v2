@@ -6,49 +6,62 @@ class AdminController {
         $this->dataManager = new DataManager();
     }
 
-// dashboardメソッドを、このテスト用コードで丸ごと置き換えてください
-public function dashboard() {
-    // --- ▼▼▼ すべてのロジックを無視し、正しい値を直接定義する ▼▼▼ ---
+    public function dashboard() {
+        $data['title'] = '管理ダッシュボード';
 
-    $data['title'] = '管理ダッシュボード【ビュー表示テスト】';
+        // 1. パラメータを受け取る
+        $page_num = isset($_GET['page_num']) ? (int)$_GET['page_num'] : 1;
+        $items_per_page = 20;
+        $sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open';
+        $sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc';
 
-    // カテゴリデータを仮作成
-    $data['categories'] = array(
-        array('id' => 'cat_001', 'name' => '少年まんが', 'directory_name' => 'shonen', 'alias' => 'shonen', 'title_count' => '12'),
-        array('id' => 'cat_002', 'name' => '少女まんが', 'directory_name' => 'shojo', 'alias' => 'shojo', 'title_count' => '11'),
-    );
-    // カテゴリごとの作品数を仮作成
-    $data['category_work_counts'] = array(
-        'cat_001' => 12,
-        'cat_002' => 11,
-    );
+        // 2. 表示に必要なデータを取得する
+        $all_works = $this->dataManager->getWorks($sort_key, $sort_order, 9999, 0);
+        $categories = $this->dataManager->getCategories();
+        $valid_category_ids = array();
+        foreach ($categories as $category) {
+            $valid_category_ids[] = $category['id'];
+        }
 
-    // 作品データを25件ほど仮作成（41件だと大変なので）
-    $data['works'] = array();
-    for ($i = 1; $i <= 25; $i++) {
-        $data['works'][] = array(
-            'work_id' => 'test_' . $i,
-            'title' => 'テスト作品 ' . $i,
-            'category_id' => 'cat_001',
-            'open' => '2025-06-26'
-        );
+        // 3.【最終修正】カテゴリを持つ作品だけを「厳密に」フィルタリングする
+        $valid_works = array();
+        foreach ($all_works as $work) {
+            // in_arrayの3番目の引数に「true」を追加し、厳密な型比較を行う
+            if (isset($work['category_id']) && in_array($work['category_id'], $valid_category_ids, true)) {
+                $valid_works[] = $work;
+            }
+        }
+
+        // 4. ページネーションを計算する
+        $total_works = count($valid_works);
+        $total_pages = ceil($total_works / $items_per_page);
+        
+        // 5. 現在のページに表示する分だけを切り出す
+        $offset = ($page_num - 1) * $items_per_page;
+        $works_for_page = array_slice($valid_works, $offset, $items_per_page);
+
+        // 6. カテゴリごとの作品数を集計する
+        $category_work_counts = array();
+        foreach ($categories as $category) {
+            $category_work_counts[$category['id']] = 0;
+        }
+        foreach ($valid_works as $work) { // 集計も有効な作品リストから行う
+            if (isset($category_work_counts[$work['category_id']])) {
+                $category_work_counts[$work['category_id']]++;
+            }
+        }
+        
+        // 7. ビューに渡すデータをセットする
+        $data['categories'] = $categories;
+        $data['works'] = $works_for_page;
+        $data['category_work_counts'] = $category_work_counts;
+        $data['total_pages'] = $total_pages;
+        $data['current_page'] = $page_num;
+        $data['current_sort_key'] = $sort_key;
+        $data['current_sort_order'] = $sort_order;
+        
+        $this->loadView('dashboard', $data);
     }
-    
-    // ソート情報を仮作成
-    $data['current_sort_key'] = 'open';
-    $data['current_sort_order'] = 'desc';
-
-    // ★★★ 最も重要なテスト箇所 ★★★
-    // 総ページ数を「3」に固定する (25件の作品 / 1ページ20件 = 2ページだが、あえて「3」にする)
-    $data['total_pages'] = 3;
-    $data['current_page'] = 1;
-    
-    // --- ▲▲▲ ここまでがテスト用の固定データ ▲▲▲ ---
-
-    // この固定データをビューに渡して表示させてみる
-    $this->loadView('dashboard', $data);
-}
-
 
     public function addWork() {
         $data['title'] = '作品の新規追加';

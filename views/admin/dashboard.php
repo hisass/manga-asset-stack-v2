@@ -1,3 +1,19 @@
+<?php
+/**
+ * ヘルパー関数
+ * ソート用のリンクを生成する
+ */
+function sort_link($label, $key, $current_key, $current_order) {
+    $order = ($key === $current_key && $current_order === 'asc') ? 'desc' : 'asc';
+    $icon = '';
+    if ($key === $current_key) {
+        $icon = ($current_order === 'asc') ? ' ▲' : ' ▼';
+    }
+    // 現在のページ番号を維持するために、URLにpage_numを追加
+    $page_num_param = isset($_GET['page_num']) ? '&page_num=' . (int)$_GET['page_num'] : '';
+    return '<a href="admin.php?sort=' . $key . '&order=' . $order . $page_num_param . '" class="text-white text-decoration-none">' . $label . $icon . '</a>';
+}
+?>
 <h1 class="mb-4"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
 
 <section class="mb-5">
@@ -44,18 +60,8 @@
     <table class="table table-striped table-bordered table-sm">
         <thead class="table-dark">
             <tr>
-                <?php
-                // このヘルパー関数はここにないとエラーになるため残しますが、リンクのclassを修正します
-                function sort_link($label, $key, $current_key, $current_order) {
-                    $order = ($key === $current_key && $current_order === 'asc') ? 'desc' : 'asc';
-                    $icon = '';
-                    if ($key === $current_key) {
-                        $icon = ($current_order === 'asc') ? ' ▲' : ' ▼';
-                    }
-                    return '<a href="admin.php?sort=' . $key . '&order=' . $order . '" class="text-white text-decoration-none">' . $label . $icon . '</a>';
-                }
-                ?>
-                <th></th> <th><?= sort_link('タイトル', 'title', $current_sort_key, $current_sort_order) ?></th>
+                <th></th>
+                <th><?= sort_link('タイトル', 'title', $current_sort_key, $current_sort_order) ?></th>
                 <th>カテゴリ</th>
                 <th><?= sort_link('公開日', 'open', $current_sort_key, $current_sort_order) ?></th>
                 <th>作品ID</th>
@@ -63,47 +69,53 @@
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($works as $work): ?>
+            <?php if (!empty($works)): ?>
+                <?php foreach ($works as $work): ?>
+                    <tr>
+                        <td>
+                            <?php
+                            $is_new = false;
+                            if (!empty($work['open'])) {
+                                $open_timestamp = strtotime($work['open']);
+                                if (time() - $open_timestamp < (60 * 60 * 24 * 7)) { // 7日間
+                                    $is_new = true;
+                                }
+                            }
+                            if ($is_new) {
+                                echo '<span class="badge bg-danger">NEW</span>';
+                            }
+                            ?>
+                        </td>
+                        <td><?= htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8') ?></td>
+                        <td>
+                            <?php
+                            $category_name = '未分類';
+                            foreach ($categories as $category) {
+                                if ($category['id'] === $work['category_id']) {
+                                    $category_name = $category['name'];
+                                    break;
+                                }
+                            }
+                            echo htmlspecialchars($category_name, ENT_QUOTES, 'UTF-8');
+                            ?>
+                        </td>
+                        <td><?= isset($work['open']) ? htmlspecialchars($work['open'], ENT_QUOTES, 'UTF-8') : '' ?></td>
+                        <td><?= htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8') ?></td>
+                        <td>
+                            <a href="admin.php?action=edit_work&id=<?= urlencode($work['work_id']) ?>" class="btn btn-secondary btn-sm">編集</a>
+                            <a href="admin.php?action=delete_work&id=<?= urlencode($work['work_id']) ?>" 
+                               class="btn btn-danger btn-sm" 
+                               onclick="return confirm('本当に「<?= htmlspecialchars(addslashes($work['title']), ENT_QUOTES, 'UTF-8') ?>」を削除しますか？この操作は元に戻せません。');">
+                               削除
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
                 <tr>
-                    <td>
-                        <?php
-                        $is_new = false;
-                        if (!empty($work['open'])) {
-                            $open_timestamp = strtotime($work['open']);
-                            if (time() - $open_timestamp < (60 * 60 * 24 * 7)) { // 7日間
-                                $is_new = true;
-                            }
-                        }
-                        if ($is_new) {
-                            echo '<span class="badge bg-danger">NEW</span>';
-                        }
-                        ?>
-                    </td>
-                    <td><?= htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td>
-                        <?php
-                        $category_name = '未分類';
-                        foreach ($categories as $category) {
-                            if ($category['id'] === $work['category_id']) {
-                                $category_name = $category['name'];
-                                break;
-                            }
-                        }
-                        echo htmlspecialchars($category_name, ENT_QUOTES, 'UTF-8');
-                        ?>
-                    </td>
-                    <td><?= isset($work['open']) ? htmlspecialchars($work['open'], ENT_QUOTES, 'UTF-8') : '' ?></td>
-                    <td><?= htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td>
-                        <a href="admin.php?action=edit_work&id=<?= urlencode($work['work_id']) ?>" class="btn btn-secondary btn-sm">編集</a>
-                        <a href="admin.php?action=delete_work&id=<?= urlencode($work['work_id']) ?>" 
-                           class="btn btn-danger btn-sm" 
-                           onclick="return confirm('本当に「<?= htmlspecialchars(addslashes($work['title']), ENT_QUOTES, 'UTF-8') ?>」を削除しますか？この操作は元に戻せません。');">
-                           削除
-                        </a>
-                    </td>
+                    <td colspan="6" class="text-center">表示する作品がありません。</td>
                 </tr>
-            <?php endforeach; ?>
+            <?php endif; ?>
         </tbody>
     </table>
 
