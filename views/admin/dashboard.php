@@ -9,13 +9,13 @@ function sort_link($label, $key, $current_key, $current_order, $filter_category,
     if ($key === $current_key) {
         $icon = ($current_order === 'asc') ? ' ▲' : ' ▼';
     }
-    // フィルタと検索のパラメータをURLに追加
-    $params = http_build_query([
+    // 【修正】配列の構文をPHP 5.3対応の array() に変更
+    $params = http_build_query(array(
         'sort' => $key,
         'order' => $order,
         'filter_category' => $filter_category,
         'search' => $search_keyword
-    ]);
+    ));
     return '<a href="admin.php?' . $params . '" class="text-white text-decoration-none">' . $label . $icon . '</a>';
 }
 
@@ -29,13 +29,13 @@ function render_pagination($current_page, $total_pages, $current_sort_key, $curr
     $start = max(1, $current_page - $window);
     $end = min($total_pages, $current_page + $window);
     
-    // フィルタと検索のパラメータをURLに追加
-    $base_params = http_build_query([
+    // 【修正】配列の構文をPHP 5.3対応の array() に変更
+    $base_params = http_build_query(array(
         'sort' => $current_sort_key,
         'order' => $current_sort_order,
         'filter_category' => $filter_category,
         'search' => $search_keyword
-    ]);
+    ));
     $base_url = "admin.php?" . $base_params;
 
     echo '<ul class="pagination justify-content-center">';
@@ -67,7 +67,39 @@ function render_pagination($current_page, $total_pages, $current_sort_key, $curr
 <h1 class="mb-4"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
 
 <section class="mb-5">
-    </section>
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>カテゴリ一覧</h2>
+        <a href="admin.php?action=edit_category" class="btn btn-primary btn-sm">カテゴリを新規追加</a>
+    </div>
+    <table class="table table-striped table-bordered table-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>カテゴリ名</th>
+                <th>登録作品数</th>
+                <th>フォルダ名</th>
+                <th>略称 (alias)</th>
+                <th>トップ表示数 (title_count)</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($categories as $category): ?>
+                <tr>
+                    <td><?= htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars(isset($category_work_counts[$category['id']]) ? $category_work_counts[$category['id']] : 0, ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= isset($category['directory_name']) ? htmlspecialchars($category['directory_name'], ENT_QUOTES, 'UTF-8') : '' ?></td>
+                    <td><?= htmlspecialchars($category['alias'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars($category['title_count'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td>
+                        <a href="admin.php?action=edit_category&id=<?= urlencode($category['id']) ?>" class="btn btn-secondary btn-sm">編集</a>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</section>
 
 <section>
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -85,7 +117,7 @@ function render_pagination($current_page, $total_pages, $current_sort_key, $curr
                         <option value="">すべてのカテゴリ</option>
                         <?php foreach ($categories as $category): ?>
                             <option value="<?= htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8') ?>"
-                                <?= ($current_filter_category === $category['id']) ? 'selected' : '' ?>>
+                                <?= (isset($current_filter_category) && $current_filter_category === $category['id']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?>
                             </option>
                         <?php endforeach; ?>
@@ -95,7 +127,7 @@ function render_pagination($current_page, $total_pages, $current_sort_key, $curr
                     <label for="search" class="visually-hidden">キーワード検索</label>
                     <input type="text" name="search" id="search" class="form-control" 
                            placeholder="タイトル, 作品ID, 著者名で検索..."
-                           value="<?= htmlspecialchars($current_search_keyword, ENT_QUOTES, 'UTF-8') ?>">
+                           value="<?= isset($current_search_keyword) ? htmlspecialchars($current_search_keyword, ENT_QUOTES, 'UTF-8') : '' ?>">
                 </div>
                 <div class="col-md-3 d-grid">
                     <button type="submit" class="btn btn-info">絞り込む</button>
@@ -103,6 +135,7 @@ function render_pagination($current_page, $total_pages, $current_sort_key, $curr
             </form>
         </div>
     </div>
+
     <table class="table table-striped table-bordered table-sm">
         <thead class="table-dark">
             <tr>
@@ -118,7 +151,44 @@ function render_pagination($current_page, $total_pages, $current_sort_key, $curr
             <?php if (!empty($works)): ?>
                 <?php foreach ($works as $work): ?>
                     <tr>
-                        </tr>
+                        <td>
+                            <?php
+                            $is_new = false;
+                            if (!empty($work['open'])) {
+                                $open_timestamp = strtotime($work['open']);
+                                if (time() - $open_timestamp < (60 * 60 * 24 * 7)) { // 7日間
+                                    $is_new = true;
+                                }
+                            }
+                            if ($is_new) {
+                                echo '<span class="badge bg-danger">NEW</span>';
+                            }
+                            ?>
+                        </td>
+                        <td><?= htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8') ?></td>
+                        <td>
+                            <?php
+                            $category_name = '未分類';
+                            foreach ($categories as $category) {
+                                if ($category['id'] === $work['category_id']) {
+                                    $category_name = $category['name'];
+                                    break;
+                                }
+                            }
+                            echo htmlspecialchars($category_name, ENT_QUOTES, 'UTF-8');
+                            ?>
+                        </td>
+                        <td><?= isset($work['open']) ? htmlspecialchars($work['open'], ENT_QUOTES, 'UTF-8') : '' ?></td>
+                        <td><?= htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8') ?></td>
+                        <td>
+                            <a href="admin.php?action=edit_work&id=<?= urlencode($work['work_id']) ?>" class="btn btn-secondary btn-sm">編集</a>
+                            <a href="admin.php?action=delete_work&id=<?= urlencode($work['work_id']) ?>" 
+                               class="btn btn-danger btn-sm" 
+                               onclick="return confirm('本当に「<?= htmlspecialchars(addslashes($work['title']), ENT_QUOTES, 'UTF-8') ?>」を削除しますか？この操作は元に戻せません。');">
+                               削除
+                            </a>
+                        </td>
+                    </tr>
                 <?php endforeach; ?>
             <?php else: ?>
                 <tr>
