@@ -1,7 +1,7 @@
 <?php
 /**
  * 旧データ(sozai.json)を読み込み、新フォーマット(sozai_v2.json)に変換して保存する
- * 【JSON文法エラー自動修正機能付き】
+ * 【特殊なJSON構造と文字コードに両対応した最終版】
  */
 
 // このコンバータがあるディレクトリのパス
@@ -20,26 +20,21 @@ $old_json_string = file_get_contents($old_data_path);
 $utf8_json_string = mb_convert_encoding($old_json_string, 'UTF-8', 'SJIS-win');
 
 
-// 3.【最重要修正】JSONをデコードする前に、よくある文法エラーを自動的に修正（クリーニング）する
-// JavaScript形式のコメント (// ... や /* ... */) を削除
-$cleaned_json_string = preg_replace('!/\*.*?\*/!s', '', $utf8_json_string);
-$cleaned_json_string = preg_replace('!//.*!', '', $cleaned_json_string);
-// 配列やオブジェクトの最後の要素にある余分なカンマを削除
-$cleaned_json_string = preg_replace('/,\s*([\]\}])/', '$1', $cleaned_json_string);
+// 3.【最重要修正】特殊なJSON構造を、単一の有効なJSONオブジェクトに修正する
+// "},{" のような、オブジェクトを区切ってしまっている不正なカンマを、
+// 正しいカンマに置換する
+$merged_json_string = str_replace('},{"', ',"', $utf8_json_string);
 
 
 // 4. クリーニングしたUTF-8文字列をデコードする
-$old_data = json_decode($cleaned_json_string, true);
+$old_data = json_decode($merged_json_string, true);
 
 if (json_last_error() !== JSON_ERROR_NONE) {
-    // ここでエラーが出た場合は、手動で修正が必要な、より稀な文法エラーが残っている可能性がある
-    $error_message = 'Error: sozai.jsonのJSONデコードに失敗しました。自動クリーニング後も、JSONの形式が正しくありません。';
-    
-    // PHP 5.5以降で使える詳細なエラー表示
+    // ここでエラーが出る場合は、手動での修正が必要
+    $error_message = 'Error: sozai.jsonのJSONデコードに失敗しました。';
     if (function_exists('json_last_error_msg')) {
         $error_message .= "\n詳細: " . json_last_error_msg();
     }
-    
     die($error_message);
 }
 
@@ -53,34 +48,38 @@ $new_data = array(
 if (isset($old_data['category']) && is_array($old_data['category'])) {
     foreach ($old_data['category'] as $old_cat) {
         $new_data['categories'][] = array(
-            'id' => isset($old_cat['id']) ? $old_cat['id'] : '',
-            'name' => isset($old_cat['name']) ? $old_cat['name'] : '',
-            'alias' => isset($old_cat['alias']) ? $old_cat['alias'] : '',
-            'directory_name' => isset($old_cat['directory_name']) ? $old_cat['directory_name'] : '',
-            'title_count' => isset($old_cat['title_count']) ? (int)$old_cat['title_count'] : 0,
+            'id' => isset($old_cat['category_id']) ? $old_cat['category_id'] : '', // 元のキー名に合わせる
+            'name' => isset($old_cat['category_name']) ? $old_cat['category_name'] : '',
+            'alias' => isset($old_cat['category_alias']) ? $old_cat['category_alias'] : '',
+            'directory_name' => '', // 旧データに存在しないキー
+            'title_count' => 0,      // 旧データに存在しないキー
         );
     }
 }
 
 // 作品データを変換
 if (isset($old_data['data']) && is_array($old_data['data'])) {
-    foreach ($old_data['data'] as $old_work) {
+    // 最初の行はヘッダーなので除去
+    $work_rows = array_slice($old_data['data'], 1);
+
+    foreach ($work_rows as $old_work) {
         $new_data['works'][] = array(
-            'work_id' => isset($old_work['work_id']) ? $old_work['work_id'] : '',
-            'title' => isset($old_work['title']) ? $old_work['title'] : '',
-            'title_ruby' => isset($old_work['title_ruby']) ? $old_work['title_ruby'] : '',
-            'author' => isset($old_work['author']) ? $old_work['author'] : '',
-            'author_ruby' => isset($old_work['author_ruby']) ? $old_work['author_ruby'] : '',
-            'category_id' => isset($old_work['category_id']) ? $old_work['category_id'] : '',
-            'comment' => isset($old_work['comment']) ? $old_work['comment'] : '',
-            'title_id' => isset($old_work['title_id']) ? $old_work['title_id'] : '',
-            'copyright' => isset($old_work['copyright']) ? $old_work['copyright'] : '',
-            'open' => isset($old_work['open']) ? $old_work['open'] : '',
-            'path' => isset($old_work['path']) ? $old_work['path'] : '',
-            'assets' => array()
+            'work_id'     => isset($old_work[9]) ? $old_work[9] : '', // title_id を work_id に
+            'title'       => isset($old_work[0]) ? $old_work[0] : '',
+            'title_ruby'  => isset($old_work[1]) ? $old_work[1] : '',
+            'author'      => isset($old_work[2]) ? $old_work[2] : '',
+            'author_ruby' => isset($old_work[3]) ? $old_work[3] : '',
+            'category_id' => isset($old_work[6]) ? $old_work[6] : '', // categoryをcategory_idに
+            'comment'     => isset($old_work[8]) ? $old_work[8] : '',
+            'title_id'    => isset($old_work[10]) ? $old_work[10] : '', // detailをtitle_idに
+            'copyright'   => isset($old_work[4]) ? $old_work[4] : '',
+            'open'        => isset($old_work[5]) ? $old_work[5] : '',
+            'path'        => isset($old_work[7]) ? $old_work[7] : '',
+            'assets'      => array()
         );
     }
 }
+
 
 // 6. 新しいJSONファイルとして保存
 $new_json_string = json_encode($new_data);
