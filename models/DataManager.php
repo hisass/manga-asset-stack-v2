@@ -64,9 +64,58 @@ class DataManager {
         return isset($this->data['categories']) ? $this->data['categories'] : array();
     }
     
-    public function getWorks() {
-        return isset($this->data['works']) ? $this->data['works'] : array();
+    /**
+     * 作品リストを、ソートとページネーションを適用して取得する
+     * @param string $sort_key 並び替えのキー
+     * @param string $sort_order 昇順(asc)か降順(desc)か
+     * @param int $limit 1ページあたりの表示件数
+     * @param int $offset 開始位置
+     * @return array 絞り込まれた作品のリスト
+     */
+    public function getWorks($sort_key = 'open', $sort_order = 'desc', $limit = 20, $offset = 0) {
+        $works = isset($this->data['works']) ? $this->data['works'] : array();
+
+        // ソート処理
+        usort($works, $this->buildSorter($sort_key, $sort_order));
+
+        // ページネーション処理
+        return array_slice($works, $offset, $limit);
     }
+
+    /**
+     * 全作品の総数を取得する
+     */
+    public function getTotalWorkCount() {
+        return isset($this->data['works']) ? count($this->data['works']) : 0;
+    }
+
+    /**
+     * usortで使うための比較関数を生成するヘルパー
+     */
+    private function buildSorter($key, $order) {
+        return function ($a, $b) use ($key, $order) {
+            $val_a = isset($a[$key]) ? $a[$key] : '';
+            $val_b = isset($b[$key]) ? $b[$key] : '';
+
+            // 日付の場合はタイムスタンプに変換して比較
+            if ($key === 'open') {
+                $val_a = strtotime($val_a);
+                $val_b = strtotime($val_b);
+            }
+
+            if ($val_a == $val_b) {
+                return 0;
+            }
+
+            // 降順(desc)の場合は順序を逆転
+            if ($order === 'desc') {
+                return ($val_a > $val_b) ? -1 : 1;
+            } else {
+                return ($val_a < $val_b) ? -1 : 1;
+            }
+        };
+    }
+
 
     public function getWorkById($work_id) {
         if (isset($this->data['works'])) {
@@ -153,41 +202,31 @@ class DataManager {
         return null; // 見つからなかった場合
     }
 
-    /**
-     * 新しいカテゴリを追加する
-     */
     public function addCategory($new_data) {
-        // 新しいIDを自動生成 (例: cat_003)
         $new_id = 'cat_' . str_pad(count($this->getCategories()) + 1, 3, '0', STR_PAD_LEFT);
-        
         $new_category_entry = array(
             'id' => $new_id,
             'name' => isset($new_data['name']) ? $new_data['name'] : '',
             'alias' => isset($new_data['alias']) ? $new_data['alias'] : '',
-            'directory_name' => isset($new_data['directory_name']) ? $new_data['directory_name'] : '', // ▼▼▼ 追加 ▼▼▼
+            'directory_name' => isset($new_data['directory_name']) ? $new_data['directory_name'] : '',
             'title_count' => isset($new_data['title_count']) ? (int)$new_data['title_count'] : 0,
         );
-
         $this->data['categories'][] = $new_category_entry;
         return $this->saveData();
     }
 
-    /**
-     * 既存のカテゴリを更新する
-     */
     public function updateCategory($category_id, $new_data) {
         $category_found_and_updated = false;
         foreach ($this->data['categories'] as $index => $category) {
             if (isset($category['id']) && $category['id'] === $category_id) {
                 $this->data['categories'][$index]['name'] = isset($new_data['name']) ? $new_data['name'] : '';
                 $this->data['categories'][$index]['alias'] = isset($new_data['alias']) ? $new_data['alias'] : '';
-                $this->data['categories'][$index]['directory_name'] = isset($new_data['directory_name']) ? $new_data['directory_name'] : ''; // ▼▼▼ 追加 ▼▼▼
+                $this->data['categories'][$index]['directory_name'] = isset($new_data['directory_name']) ? $new_data['directory_name'] : '';
                 $this->data['categories'][$index]['title_count'] = isset($new_data['title_count']) ? (int)$new_data['title_count'] : 0;
                 $category_found_and_updated = true;
                 break;
             }
         }
-
         if ($category_found_and_updated) {
             return $this->saveData();
         }

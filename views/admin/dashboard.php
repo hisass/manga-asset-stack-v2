@@ -11,7 +11,8 @@
                 <th>ID</th>
                 <th>カテゴリ名</th>
                 <th>登録作品数</th>
-                <th>フォルダ名</th> <th>略称 (alias)</th>
+                <th>フォルダ名</th>
+                <th>略称 (alias)</th>
                 <th>トップ表示数 (title_count)</th>
                 <th>操作</th>
             </tr>
@@ -39,21 +40,62 @@
         <h2>作品一覧</h2>
         <a href="admin.php?action=add_work" class="btn btn-primary btn-sm">作品を新規追加</a>
     </div>
+
     <table class="table table-striped table-bordered table-sm">
         <thead class="table-dark">
             <tr>
+                <?php
+                // ソート用のリンクを生成するヘルパー関数
+                function sort_link($label, $key, $current_key, $current_order) {
+                    $order = ($key === $current_key && $current_order === 'asc') ? 'desc' : 'asc';
+                    $icon = '';
+                    if ($key === $current_key) {
+                        $icon = ($current_order === 'asc') ? ' ▲' : ' ▼';
+                    }
+                    return '<a href="admin.php?sort=' . $key . '&order=' . $order . '" class="text-white">' . $label . $icon . '</a>';
+                }
+                ?>
+                <th></th> <th><?= sort_link('タイトル', 'title', $current_sort_key, $current_sort_order) ?></th>
+                <th>カテゴリ</th>
+                <th><?= sort_link('公開日', 'open', $current_sort_key, $current_sort_order) ?></th>
                 <th>作品ID</th>
-                <th>タイトル</th>
-                <th>カテゴリID</th>
                 <th>操作</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($works as $work): ?>
                 <tr>
-                    <td><?= htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td>
+                        <?php
+                        // NEWバッジの表示ロジック
+                        $is_new = false;
+                        if (!empty($work['open'])) {
+                            $open_timestamp = strtotime($work['open']);
+                            if (time() - $open_timestamp < (60 * 60 * 24 * 7)) { // 7日間
+                                $is_new = true;
+                            }
+                        }
+                        if ($is_new) {
+                            echo '<span class="badge bg-danger">NEW</span>';
+                        }
+                        ?>
+                    </td>
                     <td><?= htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><?= htmlspecialchars($work['category_id'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td>
+                        <?php
+                        // カテゴリIDからカテゴリ名に変換して表示
+                        $category_name = '未分類';
+                        foreach ($categories as $category) {
+                            if ($category['id'] === $work['category_id']) {
+                                $category_name = $category['name'];
+                                break;
+                            }
+                        }
+                        echo htmlspecialchars($category_name, ENT_QUOTES, 'UTF-8');
+                        ?>
+                    </td>
+                    <td><?= isset($work['open']) ? htmlspecialchars($work['open'], ENT_QUOTES, 'UTF-8') : '' ?></td>
+                    <td><?= htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>
                         <a href="admin.php?action=edit_work&id=<?= urlencode($work['work_id']) ?>" class="btn btn-secondary btn-sm">編集</a>
                         <a href="admin.php?action=delete_work&id=<?= urlencode($work['work_id']) ?>" 
@@ -66,4 +108,22 @@
             <?php endforeach; ?>
         </tbody>
     </table>
-</section>
+
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            <?php if ($total_pages > 1): ?>
+                <li class="page-item <?= ($current_page <= 1) ? 'disabled' : '' ?>">
+                    <a class="page-link" href="admin.php?page_num=<?= $current_page - 1 ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>">前へ</a>
+                </li>
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <li class="page-item <?= ($i == $current_page) ? 'active' : '' ?>">
+                        <a class="page-link" href="admin.php?page_num=<?= $i ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>"><?= $i ?></a>
+                    </li>
+                <?php endfor; ?>
+                <li class="page-item <?= ($current_page >= $total_pages) ? 'disabled' : '' ?>">
+                    <a class="page-link" href="admin.php?page_num=<?= $current_page + 1 ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>">次へ</a>
+                </li>
+            <?php endif; ?>
+        </ul>
+    </nav>
+    </section>

@@ -7,29 +7,49 @@ class AdminController {
     }
 
     public function dashboard() {
+        // --- ▼▼▼ ページネーションとソートのロジックを追加 ▼▼▼ ---
         $data['title'] = '管理ダッシュボード';
+        
+        // 1. パラメータの受け取り
+        $page_num = isset($_GET['page_num']) ? (int)$_GET['page_num'] : 1;
+        $items_per_page = 20; // 1ページの表示件数
+        
+        // ソート順の決定
+        $sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open'; // デフォルトは公開日
+        $sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc'; // デフォルトは降順
+        
+        // 2. データの取得
+        $total_works = $this->dataManager->getTotalWorkCount();
+        $offset = ($page_num - 1) * $items_per_page;
+        $works = $this->dataManager->getWorks($sort_key, $sort_order, $items_per_page, $offset);
+        
+        // 3. ページネーション情報の計算
+        $total_pages = ceil($total_works / $items_per_page);
+        
+        // 4. カテゴリ情報と作品数集計（これは変更なし）
         $categories = $this->dataManager->getCategories();
-        $works = $this->dataManager->getWorks();
-
-        // カテゴリごとの作品数を集計するための配列を準備
         $category_work_counts = array();
         foreach ($categories as $category) {
-            $category_work_counts[$category['id']] = 0; // まずは0で初期化
+            $category_work_counts[$category['id']] = 0;
         }
-
-        // 全作品をループして、カテゴリIDごとにカウントアップ
-        foreach ($works as $work) {
+        $all_works = $this->dataManager->getWorks('open', 'desc', 9999, 0); // 全作品を取得して集計
+        foreach ($all_works as $work) {
             if (isset($work['category_id']) && isset($category_work_counts[$work['category_id']])) {
                 $category_work_counts[$work['category_id']]++;
             }
         }
-
-        // ビューに渡すデータ
+        
+        // 5. ビューに渡すデータをセット
         $data['categories'] = $categories;
         $data['works'] = $works;
-        $data['category_work_counts'] = $category_work_counts; // 集計結果をビューに渡す
+        $data['category_work_counts'] = $category_work_counts;
+        $data['total_pages'] = $total_pages;
+        $data['current_page'] = $page_num;
+        $data['current_sort_key'] = $sort_key;
+        $data['current_sort_order'] = $sort_order;
         
         $this->loadView('dashboard', $data);
+        // --- ▲▲▲ ここまで全面的に修正 ▲▲▲ ---
     }
 
     public function addWork() {
@@ -103,7 +123,6 @@ class AdminController {
         $is_new = ($category_id === null);
         if ($is_new) {
             $data['title'] = 'カテゴリの新規追加';
-            // ▼▼▼ 'directory_name'を追加 ▼▼▼
             $data['category'] = array(
                 'id' => '', 'name' => '', 'alias' => '', 'directory_name' => '', 'title_count' => 0
             );
