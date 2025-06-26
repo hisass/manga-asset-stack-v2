@@ -1,33 +1,27 @@
 <?php
-// PHPのエラーを画面に表示する設定
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
-// このファイルがあるディレクトリのパスを基準とする
-define('BASE_DIR_PATH', __DIR__);
+// 1. 設定ファイルを読み込む (BASE_DIR_PATHはこの中で定義される)
+require_once __DIR__ . '/config.php';
 
-//【修正】ルートディレクトリから直接ファイルを読み込む
-require_once BASE_DIR_PATH . '/config.php';
+// 2. DataManagerを読み込む (config.phpで定義されたBASE_DIR_PATHを利用)
+// config.phpのBASE_DIR_PATHがappフォルダを指しているため、そこからの相対パスで指定
 require_once BASE_DIR_PATH . '/DataManager.php';
 
-// config.phpで定義されるべき定数が存在するかチェック
+// config.phpで定義されるべきアセットパス定数が存在するかチェック
 if (!defined('ASSET_PATH_V1') || !defined('ASSET_PATH_V2')) {
-    // config.phpに定数が定義されていない場合のエラーメッセージ
-    die("致命的エラー: 定数 ASSET_PATH_V1 または ASSET_PATH_V2 が config.php 内で定義されていません。config.phpにdefine('ASSET_PATH_V1', ...);の行を追加してください。");
+    die("致命的エラー: 定数 ASSET_PATH_V1 または ASSET_PATH_V2 が config.php 内で定義されていません。");
 }
 
 $dataManager = new DataManager();
 
 // URLから作品IDを取得
 $work_id = isset($_GET['id']) ? $_GET['id'] : null;
-
 if (!$work_id) {
     die('作品IDが指定されていません。');
 }
 
 // 作品データを取得
 $work = $dataManager->getWorkById($work_id);
-
 if (!$work) {
     die('指定された作品が見つかりません。');
 }
@@ -41,8 +35,8 @@ function find_asset_paths($category_path, $filename) {
     if (file_exists($v1_full_path)) {
         return array(
             'full_path' => $v1_full_path,
-            'web_path' => '../dmpc-materials/contents/' . $category_path . '/' . $filename,
-            'version' => 'v1'
+            'web_path'  => '../dmpc-materials/contents/' . $category_path . '/' . $filename,
+            'version'   => 'v1'
         );
     }
 
@@ -51,8 +45,8 @@ function find_asset_paths($category_path, $filename) {
     if (file_exists($v2_full_path)) {
         return array(
             'full_path' => $v2_full_path,
-            'web_path' => 'contents/' . $category_path . '/' . $filename,
-            'version' => 'v2'
+            'web_path'  => 'contents/' . $category_path . '/' . $filename,
+            'version'   => 'v2'
         );
     }
 
