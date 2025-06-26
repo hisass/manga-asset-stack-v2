@@ -1,7 +1,7 @@
 <?php
 /**
  * 旧データ(sozai.json)を読み込み、新フォーマット(sozai_v2.json)に変換して保存する
- * 【文字コード変換 修正版】
+ * 【JSON文法エラー自動修正機能付き】
  */
 
 // このコンバータがあるディレクトリのパス
@@ -16,17 +16,34 @@ if (!file_exists($old_data_path)) {
 }
 $old_json_string = file_get_contents($old_data_path);
 
-// 2.【最重要修正】JSONをデコードする「前」に、文字列全体の文字コードを変換する
+// 2. 文字列全体の文字コードを Shift_JIS から UTF-8 に変換する
 $utf8_json_string = mb_convert_encoding($old_json_string, 'UTF-8', 'SJIS-win');
 
-// 3. UTF-8に変換した文字列をデコードする
-$old_data = json_decode($utf8_json_string, true);
+
+// 3.【最重要修正】JSONをデコードする前に、よくある文法エラーを自動的に修正（クリーニング）する
+// JavaScript形式のコメント (// ... や /* ... */) を削除
+$cleaned_json_string = preg_replace('!/\*.*?\*/!s', '', $utf8_json_string);
+$cleaned_json_string = preg_replace('!//.*!', '', $cleaned_json_string);
+// 配列やオブジェクトの最後の要素にある余分なカンマを削除
+$cleaned_json_string = preg_replace('/,\s*([\]\}])/', '$1', $cleaned_json_string);
+
+
+// 4. クリーニングしたUTF-8文字列をデコードする
+$old_data = json_decode($cleaned_json_string, true);
 
 if (json_last_error() !== JSON_ERROR_NONE) {
-    die("Error: 旧データ(sozai.json)のJSONデコードに失敗しました。文字コード変換後も、JSONの形式が正しくない可能性があります。");
+    // ここでエラーが出た場合は、手動で修正が必要な、より稀な文法エラーが残っている可能性がある
+    $error_message = 'Error: sozai.jsonのJSONデコードに失敗しました。自動クリーニング後も、JSONの形式が正しくありません。';
+    
+    // PHP 5.5以降で使える詳細なエラー表示
+    if (function_exists('json_last_error_msg')) {
+        $error_message .= "\n詳細: " . json_last_error_msg();
+    }
+    
+    die($error_message);
 }
 
-// 4. 新しいデータ構造を作成
+// 5. 新しいデータ構造を作成
 $new_data = array(
     'categories' => array(),
     'works' => array()
@@ -60,15 +77,15 @@ if (isset($old_data['data']) && is_array($old_data['data'])) {
             'copyright' => isset($old_work['copyright']) ? $old_work['copyright'] : '',
             'open' => isset($old_work['open']) ? $old_work['open'] : '',
             'path' => isset($old_work['path']) ? $old_work['path'] : '',
-            'assets' => array() // 将来の機能のために空のassets配列を追加
+            'assets' => array()
         );
     }
 }
 
-// 5. 新しいJSONファイルとして保存
+// 6. 新しいJSONファイルとして保存
 $new_json_string = json_encode($new_data);
 
-if (json_last_error() !== JSON_ERROR_NONE) {
+if ($new_json_string === false) {
     die("Error: 新データ(sozai_v2.json)のJSONエンコードに失敗しました。");
 }
 
