@@ -22,6 +22,13 @@ class AdminController {
         $page_num = isset($_GET['page_num']) ? (int)$_GET['page_num'] : 1;
         $items_per_page = 20;
         $total_pages = ceil($total_works / $items_per_page);
+
+            // ↓↓↓↓ ここからデバッグ用コード ↓↓↓↓
+            echo "デバッグ情報 --> Total Works: " . $total_works . " | Items Per Page: " . $items_per_page . " | Calculated Pages: " . $total_pages;
+            var_dump($total_works, $items_per_page, $total_pages);
+            exit;
+            // ↑↑↑↑ ここまでデバッグ用コード ↑↑↑↑
+
         $offset = ($page_num - 1) * $items_per_page;
 
         // 4.【変更点】現在のページに表示する作品を、全作品配列から切り出す
@@ -168,4 +175,4 @@ class AdminController {
         require_once $baseDir . "{$viewName}.php";
         require_once $baseDir . "layouts/footer.php";
     }
-}
+}       
