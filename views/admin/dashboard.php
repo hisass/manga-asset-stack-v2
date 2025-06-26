@@ -45,14 +45,13 @@
         <thead class="table-dark">
             <tr>
                 <?php
-                // ソート用のリンクを生成するヘルパー関数
                 function sort_link($label, $key, $current_key, $current_order) {
                     $order = ($key === $current_key && $current_order === 'asc') ? 'desc' : 'asc';
                     $icon = '';
                     if ($key === $current_key) {
                         $icon = ($current_order === 'asc') ? ' ▲' : ' ▼';
                     }
-                    return '<a href="admin.php?sort=' . $key . '&order=' . $order . '" class="text-white">' . $label . $icon . '</a>';
+                    return '<a href="admin.php?sort=' . $key . '&order=' . $order . '" class="text-white text-decoration-none">' . $label . $icon . '</a>';
                 }
                 ?>
                 <th></th> <th><?= sort_link('タイトル', 'title', $current_sort_key, $current_sort_order) ?></th>
@@ -67,11 +66,10 @@
                 <tr>
                     <td>
                         <?php
-                        // NEWバッジの表示ロジック
                         $is_new = false;
                         if (!empty($work['open'])) {
                             $open_timestamp = strtotime($work['open']);
-                            if (time() - $open_timestamp < (60 * 60 * 24 * 7)) { // 7日間
+                            if (time() - $open_timestamp < (60 * 60 * 24 * 7)) {
                                 $is_new = true;
                             }
                         }
@@ -83,7 +81,6 @@
                     <td><?= htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>
                         <?php
-                        // カテゴリIDからカテゴリ名に変換して表示
                         $category_name = '未分類';
                         foreach ($categories as $category) {
                             if ($category['id'] === $work['category_id']) {
@@ -115,13 +112,11 @@
                 <li class="page-item <?= ($current_page <= 1) ? 'disabled' : '' ?>">
                     <a class="page-link" href="admin.php?page_num=<?= $current_page - 1 ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>">前へ</a>
                 </li>
-
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                     <li class="page-item <?= ($i == $current_page) ? 'active' : '' ?>">
                         <a class="page-link" href="admin.php?page_num=<?= $i ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>"><?= $i ?></a>
                     </li>
                 <?php endfor; ?>
-
                 <li class="page-item <?= ($current_page >= $total_pages) ? 'disabled' : '' ?>">
                     <a class="page-link" href="admin.php?page_num=<?= $current_page + 1 ?>&sort=<?= $current_sort_key ?>&order=<?= $current_sort_order ?>">次へ</a>
                 </li>
