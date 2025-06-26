@@ -1,7 +1,20 @@
 <?php
-// 設定ファイルとデータマネージャーを読み込む
-require_once __DIR__ . '/app/config.php';
-require_once __DIR__ . '/app/DataManager.php';
+// PHPのエラーを画面に表示する設定
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// このファイルがあるディレクトリのパスを基準とする
+define('BASE_DIR_PATH', __DIR__);
+
+//【修正】ルートディレクトリから直接ファイルを読み込む
+require_once BASE_DIR_PATH . '/config.php';
+require_once BASE_DIR_PATH . '/DataManager.php';
+
+// config.phpで定義されるべき定数が存在するかチェック
+if (!defined('ASSET_PATH_V1') || !defined('ASSET_PATH_V2')) {
+    // config.phpに定数が定義されていない場合のエラーメッセージ
+    die("致命的エラー: 定数 ASSET_PATH_V1 または ASSET_PATH_V2 が config.php 内で定義されていません。config.phpにdefine('ASSET_PATH_V1', ...);の行を追加してください。");
+}
 
 $dataManager = new DataManager();
 
@@ -21,9 +34,6 @@ if (!$work) {
 
 /**
  * アセットのフルパスとWeb用の相対パスを検索する関数
- * @param string $category_path 作品のカテゴリフォルダ名
- * @param string $filename アセットのファイル名
- * @return array|null パスの配列、見つからなければnull
  */
 function find_asset_paths($category_path, $filename) {
     // v1のパスを確認
@@ -31,7 +41,6 @@ function find_asset_paths($category_path, $filename) {
     if (file_exists($v1_full_path)) {
         return array(
             'full_path' => $v1_full_path,
-            // Webで表示するための相対パスを調整
             'web_path' => '../dmpc-materials/contents/' . $category_path . '/' . $filename,
             'version' => 'v1'
         );
@@ -47,7 +56,7 @@ function find_asset_paths($category_path, $filename) {
         );
     }
 
-    return null; // どちらのパスにも見つからなかった
+    return null;
 }
 
 ?>
@@ -91,7 +100,6 @@ function find_asset_paths($category_path, $filename) {
             <?php if (!empty($work['assets']) && is_array($work['assets'])): ?>
                 <?php foreach ($work['assets'] as $asset): ?>
                     <?php
-                    // アセットのパスを検索
                     $asset_paths = find_asset_paths($work['path'], $asset['filename']);
                     ?>
                     <div class="col">
@@ -112,11 +120,11 @@ function find_asset_paths($category_path, $filename) {
                             <?php endif; ?>
                             
                             <div class="card-body">
-                                <h5 class="card-title"><?= htmlspecialchars($asset['type']) ?></h5>
-                                <p class="card-text"><?= htmlspecialchars($asset['comment']) ?></p>
+                                <h5 class="card-title"><?= htmlspecialchars(isset($asset['type']) ? $asset['type'] : 'N/A') ?></h5>
+                                <p class="card-text"><?= htmlspecialchars(isset($asset['comment']) ? $asset['comment'] : '') ?></p>
                             </div>
                             <div class="card-footer">
-                                <small class="text-muted"><?= htmlspecialchars($asset['filename']) ?></small>
+                                <small class="text-muted"><?= htmlspecialchars(isset($asset['filename']) ? $asset['filename'] : '') ?></small>
                             </div>
                         </div>
                     </div>
