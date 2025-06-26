@@ -1,45 +1,129 @@
 <?php
-// PHPのエラーを画面に表示する最上位の設定
+// PHPのエラーを画面に表示する
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-echo "<h1>ディレクトリ内容 確認モード</h1>";
-echo "<p>プロジェクトのルートディレクトリに、PHPが認識しているファイルの一覧を表示します。</p>";
-echo "<hr>";
-
-// config.phpを読み込む
+// 1. 設定ファイルを読み込む (この中でBASE_DIR_PATHが定義される)
 require_once __DIR__ . '/config.php';
 
-echo "<h3>調査対象ディレクトリ</h3>";
-if (defined('BASE_DIR_PATH')) {
-    echo "<p><code>" . htmlspecialchars(BASE_DIR_PATH) . "</code></p>";
-    
-    echo "<h3>ファイル一覧</h3>";
-    
-    // ディレクトリをスキャンする
-    $files = scandir(BASE_DIR_PATH);
-    
-    if ($files === false) {
-        die("<p style='color:red; font-weight:bold;'>エラー: ディレクトリを読み込めませんでした。パーミッションの問題の可能性があります。</p>");
-    }
-    
-    // 取得したファイル名をリスト表示する
-    echo "<ul>";
-    foreach ($files as $file) {
-        echo "<li>" . htmlspecialchars($file) . "</li>";
-    }
-    echo "</ul>";
+// 2.【修正】DataManagerを、正しい「models」フォルダから読み込む
+require_once BASE_DIR_PATH . '/models/DataManager.php';
 
-} else {
-    die("<p style='color:red; font-weight:bold;'>致命的エラー: config.phpを読み込みましたが、BASE_DIR_PATHが定義されていません。</p>");
+// アセットパス定数が存在するかチェック
+if (!defined('ASSET_PATH_V1') || !defined('ASSET_PATH_V2')) {
+    die("致命的エラー: ASSET_PATH_V1 または ASSET_PATH_V2 が config.php で定義されていません。");
 }
 
-echo "<hr>";
-echo "<h2>確認してください</h2>";
-echo "<p>上記の一覧の中に、<strong>DataManager.php</strong> という名前のファイルが、大文字・小文字まで含めて完全に一致していますか？</p>";
-echo "<p>もし <strong>datamanager.php</strong> や <strong>DataManger.php</strong> のように少しでも綴りが違う場合は、それがエラーの直接の原因です。</p>";
-echo "<p>その場合は、実際のファイル名に合わせて、require_onceの行を修正する必要があります。</p>";
+$dataManager = new DataManager();
 
-exit;
+$work_id = isset($_GET['id']) ? $_GET['id'] : null;
+if (!$work_id) {
+    die('作品IDが指定されていません。');
+}
+
+$work = $dataManager->getWorkById($work_id);
+if (!$work) {
+    die('指定された作品が見つかりません。');
+}
+
+function find_asset_paths($category_path, $filename) {
+    $v1_full_path = ASSET_PATH_V1 . '/' . $category_path . '/' . $filename;
+    if (file_exists($v1_full_path)) {
+        return array(
+            'web_path'  => '../dmpc-materials/contents/' . $category_path . '/' . $filename,
+            'version'   => 'v1'
+        );
+    }
+
+    $v2_full_path = ASSET_PATH_V2 . '/' . $category_path . '/' . $filename;
+    if (file_exists($v2_full_path)) {
+        return array(
+            'web_path'  => 'contents/' . $category_path . '/' . $filename,
+            'version'   => 'v2'
+        );
+    }
+    return null;
+}
 
 ?>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title><?= htmlspecialchars($work['title']) ?> - 作品詳細</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="public/css/style.css">
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="mb-4"><?= htmlspecialchars($work['title']) ?></h1>
+        
+        <table class="table table-bordered work-info-table">
+             <tbody>
+                <tr>
+                    <th scope="row">作品名（かな）</th>
+                    <td><?= htmlspecialchars($work['title_ruby']) ?></td>
+                </tr>
+                <tr>
+                    <th scope="row">著者名</th>
+                    <td><?= htmlspecialchars($work['author']) ?> (<?= htmlspecialchars($work['author_ruby']) ?>)</td>
+                </tr>
+                <tr>
+                    <th scope="row">権利表記</th>
+                    <td><?= htmlspecialchars($work['copyright']) ?></td>
+                </tr>
+                <tr>
+                    <th scope="row">コメント</th>
+                    <td><?= nl2br(htmlspecialchars($work['comment'])) ?></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="mt-5 mb-4">関連アセット</h2>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            <?php if (!empty($work['assets']) && is_array($work['assets'])): ?>
+                <?php foreach ($work['assets'] as $asset): ?>
+                    <?php
+                    $asset_paths = find_asset_paths($work['path'], $asset['filename']);
+                    ?>
+                    <div class="col">
+                        <div class="card h-100 asset-card">
+                            <?php if ($asset_paths): ?>
+                                <div class="card-header bg-success text-white">
+                                    ファイルあり (<?= $asset_paths['version'] ?>)
+                                </div>
+                                <img src="<?= htmlspecialchars($asset_paths['web_path']) ?>" class="card-img-top" alt="<?= htmlspecialchars($asset['filename']) ?>">
+                            <?php else: ?>
+                                <div class="card-header bg-danger text-white">
+                                    ファイルが見つかりません
+                                </div>
+                                <div class="card-body text-center text-muted">
+                                    <p class="mb-0">Path not found:</p>
+                                    <small><?= htmlspecialchars($work['path'] . '/' . $asset['filename']) ?></small>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <div class="card-body">
+                                <h5 class="card-title"><?= htmlspecialchars(isset($asset['type']) ? $asset['type'] : 'N/A') ?></h5>
+                                <p class="card-text"><?= htmlspecialchars(isset($asset['comment']) ? $asset['comment'] : '') ?></p>
+                            </div>
+                            <div class="card-footer">
+                                <small class="text-muted"><?= htmlspecialchars(isset($asset['filename']) ? $asset['filename'] : '') ?></small>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="col-12">
+                    <p class="text-muted">この作品に登録されているアセットはありません。</p>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="mt-5">
+            <a href="admin.php" class="btn btn-secondary">&laquo; 管理画面に戻る</a>
+        </div>
+    </div>
+</body>
+</html>
