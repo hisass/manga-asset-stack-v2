@@ -3,45 +3,43 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-echo "<h1>ファイル読み込み デバッグモード</h1>";
-echo "<p>どのステップで処理が停止するかを確認します。</p>";
+echo "<h1>ディレクトリ内容 確認モード</h1>";
+echo "<p>プロジェクトのルートディレクトリに、PHPが認識しているファイルの一覧を表示します。</p>";
 echo "<hr>";
 
-// --- ステップ1: config.phpの読み込みテスト ---
-echo "<h3>ステップ1: config.php の読み込み</h3>";
-echo "<p>試行中...</p>";
+// config.phpを読み込む
 require_once __DIR__ . '/config.php';
-echo "<p style='color:green; font-weight:bold;'>成功: config.php の読み込みが完了しました。</p>";
-echo "<hr>";
 
-// --- ステップ2: config.phpで定義された定数の内容確認 ---
-echo "<h3>ステップ2: config.phpで定義された定数の確認</h3>";
+echo "<h3>調査対象ディレクトリ</h3>";
 if (defined('BASE_DIR_PATH')) {
-    echo "<p>OK: BASE_DIR_PATH は定義されています。</p>";
-    echo "<p>値: <code>" . htmlspecialchars(BASE_DIR_PATH) . "</code></p>";
+    echo "<p><code>" . htmlspecialchars(BASE_DIR_PATH) . "</code></p>";
+    
+    echo "<h3>ファイル一覧</h3>";
+    
+    // ディレクトリをスキャンする
+    $files = scandir(BASE_DIR_PATH);
+    
+    if ($files === false) {
+        die("<p style='color:red; font-weight:bold;'>エラー: ディレクトリを読み込めませんでした。パーミッションの問題の可能性があります。</p>");
+    }
+    
+    // 取得したファイル名をリスト表示する
+    echo "<ul>";
+    foreach ($files as $file) {
+        echo "<li>" . htmlspecialchars($file) . "</li>";
+    }
+    echo "</ul>";
+
 } else {
     die("<p style='color:red; font-weight:bold;'>致命的エラー: config.phpを読み込みましたが、BASE_DIR_PATHが定義されていません。</p>");
 }
+
 echo "<hr>";
+echo "<h2>確認してください</h2>";
+echo "<p>上記の一覧の中に、<strong>DataManager.php</strong> という名前のファイルが、大文字・小文字まで含めて完全に一致していますか？</p>";
+echo "<p>もし <strong>datamanager.php</strong> や <strong>DataManger.php</strong> のように少しでも綴りが違う場合は、それがエラーの直接の原因です。</p>";
+echo "<p>その場合は、実際のファイル名に合わせて、require_onceの行を修正する必要があります。</p>";
 
-// --- ステップ3: DataManager.php の読み込みテスト ---
-echo "<h3>ステップ3: DataManager.php の読み込み</h3>";
-$data_manager_path = BASE_DIR_PATH . '/DataManager.php';
-echo "<p>次のパスからファイルを読み込もうとしています: <code>" . htmlspecialchars($data_manager_path) . "</code></p>";
-
-if (!file_exists($data_manager_path)) {
-     die("<p style='color:red; font-weight:bold;'>致命的エラー: 上記パスに DataManager.php が見つかりません。BASE_DIR_PATH の定義が間違っているか、ファイルがその場所に存在しません。</p>");
-}
-
-echo "<p>試行中...</p>";
-require_once $data_manager_path;
-echo "<p style='color:green; font-weight:bold;'>成功: DataManager.php の読み込みが完了しました。</p>";
-echo "<hr>";
-
-
-echo "<h2>すべてのテストが完了しました</h2>";
-echo "<p style='color:blue; font-weight:bold;'>もしこのメッセージが表示されていれば、ファイルの読み込みはすべて成功しています。</p>";
-
-exit; // テストなので、ここで処理を終了
+exit;
 
 ?>
