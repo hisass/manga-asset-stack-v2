@@ -7,6 +7,7 @@ class AdminController {
     }
 
     public function dashboard() {
+        die("テスト：AdminController.phpのdashboardメソッドが実行されました。"); // この行を追加
         $data['title'] = '管理ダッシュボード';
 
         // 1. パラメータを受け取る
