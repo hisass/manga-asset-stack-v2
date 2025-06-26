@@ -142,11 +142,6 @@ class DataManager {
         return false;
     }
 
-    /**
-     * 指定されたcategory_idを持つカテゴリを1件取得する
-     * @param string $category_id
-     * @return array|null カテゴリデータ、見つからなければnull
-     */
     public function getCategoryById($category_id) {
         if (isset($this->data['categories'])) {
             foreach ($this->data['categories'] as $category) {
@@ -156,5 +151,44 @@ class DataManager {
             }
         }
         return null; // 見つからなかった場合
+    }
+
+    /**
+     * 新しいカテゴリを追加する
+     */
+    public function addCategory($new_data) {
+        // 新しいIDを自動生成 (例: cat_003)
+        $new_id = 'cat_' . str_pad(count($this->getCategories()) + 1, 3, '0', STR_PAD_LEFT);
+        
+        $new_category_entry = array(
+            'id' => $new_id,
+            'name' => isset($new_data['name']) ? $new_data['name'] : '',
+            'alias' => isset($new_data['alias']) ? $new_data['alias'] : '',
+            'title_count' => isset($new_data['title_count']) ? (int)$new_data['title_count'] : 0,
+        );
+
+        $this->data['categories'][] = $new_category_entry;
+        return $this->saveData();
+    }
+
+    /**
+     * 既存のカテゴリを更新する
+     */
+    public function updateCategory($category_id, $new_data) {
+        $category_found_and_updated = false;
+        foreach ($this->data['categories'] as $index => $category) {
+            if (isset($category['id']) && $category['id'] === $category_id) {
+                $this->data['categories'][$index]['name'] = isset($new_data['name']) ? $new_data['name'] : '';
+                $this->data['categories'][$index]['alias'] = isset($new_data['alias']) ? $new_data['alias'] : '';
+                $this->data['categories'][$index]['title_count'] = isset($new_data['title_count']) ? (int)$new_data['title_count'] : 0;
+                $category_found_and_updated = true;
+                break;
+            }
+        }
+
+        if ($category_found_and_updated) {
+            return $this->saveData();
+        }
+        return false;
     }
 }

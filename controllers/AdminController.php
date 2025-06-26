@@ -81,20 +81,14 @@ class AdminController {
         }
     }
 
-    /**
-     * カテゴリの新規追加・編集フォームを表示する
-     */
     public function editCategory($category_id = null) {
         $is_new = ($category_id === null);
-
         if ($is_new) {
-            // 新規追加の場合
             $data['title'] = 'カテゴリの新規追加';
             $data['category'] = array(
                 'id' => '', 'name' => '', 'alias' => '', 'title_count' => 0
             );
         } else {
-            // 編集の場合
             $category = $this->dataManager->getCategoryById($category_id);
             if (!$category) {
                 die('指定されたカテゴリが見つかりません。');
@@ -102,13 +96,42 @@ class AdminController {
             $data['title'] = 'カテゴリの編集: ' . htmlspecialchars($category['name']);
             $data['category'] = $category;
         }
-        
         $this->loadView('edit_category_form', $data);
+    }
+
+    /**
+     * 新しいカテゴリを作成（保存）する
+     */
+    public function createCategory($postData) {
+        $success = $this->dataManager->addCategory($postData);
+        if ($success) {
+            header('Location: admin.php?action=dashboard');
+            exit;
+        } else {
+            die('Error: カテゴリの追加に失敗しました。');
+        }
+    }
+
+    /**
+     * 既存のカテゴリの変更を保存する
+     */
+    public function saveCategory($postData) {
+        $category_id = isset($postData['id']) ? $postData['id'] : null;
+        if (!$category_id) {
+            die('Error: カテゴリIDが見つかりません。');
+        }
+
+        $success = $this->dataManager->updateCategory($category_id, $postData);
+        if ($success) {
+            header('Location: admin.php?action=dashboard');
+            exit;
+        } else {
+            die('Error: カテゴリの更新に失敗しました。');
+        }
     }
 
     private function loadView($viewName, $data = array()) {
         extract($data, EXTR_SKIP);
-        
         $baseDir = BASE_DIR_PATH . '/views/admin/';
         require_once $baseDir . "layouts/header.php";
         require_once $baseDir . "{$viewName}.php";

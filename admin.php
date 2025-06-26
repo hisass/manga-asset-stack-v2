@@ -34,9 +34,17 @@ switch ($action) {
         $controller->deleteWork($work_id);
         break;
 
-    case 'edit_category': // ▼▼▼ この3行を追加 ▼▼▼
+    case 'edit_category':
         $category_id = isset($_GET['id']) ? $_GET['id'] : null;
         $controller->editCategory($category_id);
+        break;
+        
+    case 'create_category': // ▼▼▼ この3行を追加 ▼▼▼
+        $controller->createCategory($_POST);
+        break;
+
+    case 'save_category': // ▼▼▼ この3行を追加 ▼▼▼
+        $controller->saveCategory($_POST);
         break;
         
     case 'dashboard':
