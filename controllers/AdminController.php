@@ -6,61 +6,55 @@ class AdminController {
         $this->dataManager = new DataManager();
     }
 
+    // dashboardメソッドを、このデバッグ用コードで丸ごと置き換えてください
     public function dashboard() {
-        die("テスト：AdminController.phpのdashboardメソッドが実行されました。"); // この行を追加
-        $data['title'] = '管理ダッシュボード';
+        echo "<h1>デバッグモード</h1>";
 
-        // 1. パラメータを受け取る
-        $page_num = isset($_GET['page_num']) ? (int)$_GET['page_num'] : 1;
-        $items_per_page = 20; // 1ページの表示件数
-        $sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open'; // デフォルトは公開日
-        $sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc'; // デフォルトは降順
-
-        // 2.【修正】有効な作品の総数を取得する
-        $total_works = $this->dataManager->getValidWorkCount();
-        $total_pages = ceil($total_works / $items_per_page);
-        
-        // 3. 表示する作品データを取得する
-        // 全作品を取得してから、カテゴリでフィルタリングし、ソートし、ページで切り出す
+        // --- ステップ1：ソートされた全作品を取得 ---
+        $sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open';
+        $sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc';
         $all_works = $this->dataManager->getWorks($sort_key, $sort_order, 9999, 0);
+        echo "<h2>ステップ1：全作品データの取得</h2>";
+        echo "<p>取得した全作品数 (カテゴリ問わず): " . count($all_works) . "件</p>";
+        echo "<hr>";
 
+        // --- ステップ2：有効なカテゴリIDのリストを作成 ---
         $categories = $this->dataManager->getCategories();
         $valid_category_ids = array();
         foreach ($categories as $category) {
             $valid_category_ids[] = $category['id'];
         }
+        echo "<h2>ステップ2：有効なカテゴリの確認</h2>";
+        echo "<p>有効なカテゴリIDのリスト：</p>";
+        echo "<pre>";
+        print_r($valid_category_ids);
+        echo "</pre>";
+        echo "<hr>";
 
-        // カテゴリを持つ作品だけをフィルタリング
+        // --- ステップ3：カテゴリを持つ作品だけをフィルタリング ---
         $valid_works = array();
         foreach ($all_works as $work) {
             if (isset($work['category_id']) && in_array($work['category_id'], $valid_category_ids)) {
                 $valid_works[] = $work;
             }
         }
-        
-        // ページに表示する分だけを切り出す
-        $offset = ($page_num - 1) * $items_per_page;
-        $works_for_page = array_slice($valid_works, $offset, $items_per_page);
+        echo "<h2>ステップ3：有効な作品のフィルタリング</h2>";
+        echo "<p>フィルタリング後の有効な作品数: " . count($valid_works) . "件</p>";
+        echo "<hr>";
 
-        // 4. カテゴリごとの作品数を集計する
-        $category_work_counts = array();
-        foreach ($categories as $category) {
-            $category_work_counts[$category['id']] = 0;
-        }
-        foreach ($valid_works as $work) {
-            $category_work_counts[$work['category_id']]++;
-        }
+        // --- ステップ4：ページネーションの計算 ---
+        $total_works = count($valid_works);
+        $items_per_page = 20;
+        $total_pages = ceil($total_works / $items_per_page);
+        echo "<h2>ステップ4：ページネーションの最終計算</h2>";
+        echo "<p>計算に使用する総作品数: " . $total_works . "件</p>";
+        echo "<p>1ページあたりの表示件数: " . $items_per_page . "件</p>";
+        echo "<p>計算結果の総ページ数: " . $total_pages . "</p>";
+        echo "<hr>";
         
-        // 5. ビューに渡すデータをセットする
-        $data['categories'] = $categories;
-        $data['works'] = $works_for_page; // ページ分割された作品
-        $data['category_work_counts'] = $category_work_counts;
-        $data['total_pages'] = $total_pages;
-        $data['current_page'] = $page_num;
-        $data['current_sort_key'] = $sort_key;
-        $data['current_sort_order'] = $sort_order;
-        
-        $this->loadView('dashboard', $data);
+        // --- デバッグ終了 ---
+        echo "<h2>デバッグ終了</h2>";
+        exit;
     }
 
     public function addWork() {
