@@ -1,7 +1,7 @@
 <?php
 /**
  * 旧データ(sozai.json)を読み込み、新フォーマット(sozai_v2.json)に変換して保存する
- * 【特殊な二次元配列構造 / 文字コード / PHP5.3互換 すべてに対応した最終版】
+ * 【特殊なファイル構造 / 不正な内部文字 / 文字コード / PHP5.3互換 すべてに対応した最終版】
  */
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -28,18 +28,46 @@ if (empty($data_matches[1]) || empty($category_matches[1])) {
     die("Error: sozai.jsonの中から'data'または'category'のブロックを見つけられませんでした。");
 }
 
-$data_json_string = $data_matches[1];
-$category_json_string = $category_matches[1];
+/**
+ * JSON文字列から配列を安全に抽出する関数
+ * json_decodeが失敗するような不正な文字列に対応
+ */
+function safe_json_decode_array($json_string) {
+    // 前後の不要な文字や空白を除去
+    $trimmed = trim($json_string);
+    // 先頭の '[' と末尾の ']' を削除
+    $inner = substr($trimmed, 1, -1);
 
-// 4. 抽出した各ブロックを個別にデコードする
-$old_data_array = json_decode($data_json_string, true);
-if ($old_data_array === null) {
-    die("Error: 'data'ブロックのJSONデコードに失敗しました。code: " . json_last_error());
+    // 配列の各要素（"..."または数値）を正規表現で抽出
+    preg_match_all('/"((?:[^"]|\\")*)"|(-?\d+\.?\d*)/', $inner, $matches);
+
+    // preg_match_allは$matches[0]に全体一致、$matches[1]と$matches[2]に個別キャプチャを入れる
+    $results = array();
+    foreach ($matches[0] as $i => $match) {
+        if ($matches[2][$i] !== '') {
+            // 数値の場合
+            $results[] = is_int($matches[2][$i] + 0) ? (int)$matches[2][$i] : (float)$matches[2][$i];
+        } else {
+            // 文字列の場合 (エスケープされた\"を"に戻す)
+            $results[] = str_replace('\"', '"', $matches[1][$i]);
+        }
+    }
+    return $results;
 }
 
-$old_category_array = json_decode($category_json_string, true);
-if ($old_category_array === null) {
-    die("Error: 'category'ブロックのJSONデコードに失敗しました。code: " . json_last_error());
+
+// 4. 【最重要修正】各ブロックを安全な方法で解析する
+$data_array_of_strings = preg_split('/(?<=]),\s*(?=\[)/', substr(trim($data_matches[1]), 1, -1));
+$category_array_of_strings = preg_split('/(?<=]),\s*(?=\[)/', substr(trim($category_matches[1]), 1, -1));
+
+$old_data_array = array();
+foreach($data_array_of_strings as $row_string) {
+    $old_data_array[] = safe_json_decode_array($row_string);
+}
+
+$old_category_array = array();
+foreach($category_array_of_strings as $row_string) {
+    $old_category_array[] = safe_json_decode_array($row_string);
 }
 
 
@@ -49,13 +77,12 @@ $new_data = array(
     'works' => array()
 );
 
-// カテゴリデータを変換
-$category_map = array(); // 旧カテゴリ名と新IDの対応表
+$category_map = array();
 $category_header = array_flip($old_category_array[0]);
 foreach (array_slice($old_category_array, 1) as $old_cat) {
     $cat_name = isset($old_cat[$category_header['alias']]) ? $old_cat[$category_header['alias']] : '';
-    // カテゴリIDを生成 (元のsozai.jsonにはIDがないため、名前から生成)
-    $new_id = 'cat_' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $cat_name));
+    // カテゴリIDを一意に生成
+    $new_id = 'cat_' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $cat_name)) . '_' . (isset($old_cat[0]) ? $old_cat[0] : uniqid());
     
     $category_map[$cat_name] = $new_id;
 
@@ -63,14 +90,13 @@ foreach (array_slice($old_category_array, 1) as $old_cat) {
         'id'             => $new_id,
         'name'           => $cat_name,
         'alias'          => $cat_name,
-        'directory_name' => '', 
+        'directory_name' => '',
         'title_count'    => isset($old_cat[$category_header['title_count']]) ? (int)$old_cat[$category_header['title_count']] : 0,
     );
 }
 
 
-// 作品データを変換
-$work_header = array_flip($old_data_array[0]); // ["title" => 0, "title_ruby" => 1, ...]
+$work_header = array_flip($old_data_array[0]);
 foreach (array_slice($old_data_array, 1) as $old_work) {
     
     $category_name_from_work = isset($old_work[$work_header['category']]) ? $old_work[$work_header['category']] : '';
@@ -109,4 +135,5 @@ if ($result === false) {
     echo "Total categories: " . count($new_data['categories']) . "\n";
     echo "Total works: " . count($new_data['works']) . "\n";
 }
+
 ?>
