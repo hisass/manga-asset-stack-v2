@@ -1,204 +1,154 @@
 <?php
+// views/admin/dashboard.php
+
 /**
- * ヘルパー関数
- * 現在のフィルタと検索条件を維持したソート用リンクを生成する
+ * @var array $works 作品リスト
+ * @var array $categories カテゴリリスト
+ * @var array $category_work_counts カテゴリごとの作品数
+ * @var int $total_pages 総ページ数
+ * @var int $current_page 現在のページ番号
+ * @var string $current_sort_key 現在のソートキー
+ * @var string $current_sort_order 現在のソート順
+ * @var string|null $current_filter_category 現在のフィルターカテゴリ
+ * @var string|null $current_search_keyword 現在の検索キーワード
  */
-function sort_link($label, $key, $current_key, $current_order, $filter_category, $search_keyword) {
-    $order = ($key === $current_key && $current_order === 'asc') ? 'desc' : 'asc';
-    $icon = '';
-    if ($key === $current_key) {
-        $icon = ($current_order === 'asc') ? ' ▲' : ' ▼';
-    }
-    // 【修正】配列の構文をPHP 5.3対応の array() に変更
-    $params = http_build_query(array(
-        'sort' => $key,
-        'order' => $order,
-        'filter_category' => $filter_category,
-        'search' => $search_keyword
-    ));
-    return '<a href="admin.php?' . $params . '" class="text-white text-decoration-none">' . $label . $icon . '</a>';
+
+// ソート順を反転させるためのヘルパー関数
+function get_opposite_order($order) {
+    return ($order === 'asc') ? 'desc' : 'asc';
 }
 
-/**
- * ページネーションの表示ロジック
- */
-function render_pagination($current_page, $total_pages, $current_sort_key, $current_sort_order, $filter_category, $search_keyword) {
-    if ($total_pages <= 1) return;
-
-    $window = 2;
-    $start = max(1, $current_page - $window);
-    $end = min($total_pages, $current_page + $window);
-    
-    // 【修正】配列の構文をPHP 5.3対応の array() に変更
-    $base_params = http_build_query(array(
-        'sort' => $current_sort_key,
-        'order' => $current_sort_order,
-        'filter_category' => $filter_category,
-        'search' => $search_keyword
-    ));
-    $base_url = "admin.php?" . $base_params;
-
-    echo '<ul class="pagination justify-content-center">';
-    
-    $prev_class = ($current_page <= 1) ? 'disabled' : '';
-    echo "<li class=\"page-item {$prev_class}\"><a class=\"page-link\" href=\"{$base_url}&page_num=" . ($current_page - 1) . "\">前へ</a></li>";
-
-    if ($start > 1) {
-        echo "<li class=\"page-item\"><a class=\"page-link\" href=\"{$base_url}&page_num=1\">1</a></li>";
-        if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+// ソート矢印を表示するためのヘルパー関数
+function get_sort_indicator($key, $current_key, $current_order) {
+    if ($key === $current_key) {
+        return ($current_order === 'asc') ? ' ▲' : ' ▼';
     }
-
-    for ($i = $start; $i <= $end; $i++) {
-        $active_class = ($i == $current_page) ? 'active' : '';
-        echo "<li class=\"page-item {$active_class}\"><a class=\"page-link\" href=\"{$base_url}&page_num={$i}\">{$i}</a></li>";
-    }
-
-    if ($end < $total_pages) {
-        if ($end < $total_pages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-        echo "<li class=\"page-item\"><a class=\"page-link\" href=\"{$base_url}&page_num={$total_pages}\">{$total_pages}</a></li>";
-    }
-    
-    $next_class = ($current_page >= $total_pages) ? 'disabled' : '';
-    echo "<li class=\"page-item {$next_class}\"><a class=\"page-link\" href=\"{$base_url}&page_num=" . ($current_page + 1) . "\">次へ</a></li>";
-
-    echo '</ul>';
+    return '';
 }
 ?>
-<h1 class="mb-4"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
 
-<section class="mb-5">
-    <div class="d-flex justify-content-between align-items-center">
-        <h2>カテゴリ一覧</h2>
-        <a href="admin.php?action=edit_category" class="btn btn-primary btn-sm">カテゴリを新規追加</a>
-    </div>
-    <table class="table table-striped table-bordered table-sm">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>カテゴリ名</th>
-                <th>登録作品数</th>
-                <th>フォルダ名</th>
-                <th>略称 (alias)</th>
-                <th>トップ表示数 (title_count)</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($categories as $category): ?>
-                <tr>
-                    <td><?= htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><?= htmlspecialchars(isset($category_work_counts[$category['id']]) ? $category_work_counts[$category['id']] : 0, ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><?= isset($category['directory_name']) ? htmlspecialchars($category['directory_name'], ENT_QUOTES, 'UTF-8') : '' ?></td>
-                    <td><?= htmlspecialchars($category['alias'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><?= htmlspecialchars($category['title_count'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td>
-                        <a href="admin.php?action=edit_category&id=<?= urlencode($category['id']) ?>" class="btn btn-secondary btn-sm">編集</a>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-</section>
+<div class="container-fluid mt-4">
+    <h1 class="h2 mb-4">管理ダッシュボード</h1>
 
-<section>
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>作品一覧</h2>
-        <a href="admin.php?action=add_work" class="btn btn-primary btn-sm">作品を新規追加</a>
-    </div>
-
-    <div class="card bg-light mb-4">
+    <div class="card mb-4">
         <div class="card-body">
-            <form action="admin.php" method="GET" class="row gx-2 gy-2 align-items-center">
+            <form action="admin.php" method="GET" class="row g-3 align-items-center">
                 <input type="hidden" name="action" value="dashboard">
+                <input type="hidden" name="sort" value="<?php echo htmlspecialchars($current_sort_key, ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="hidden" name="order" value="<?php echo htmlspecialchars($current_sort_order, ENT_QUOTES, 'UTF-8'); ?>">
+                
                 <div class="col-md-4">
-                    <label for="filter_category" class="visually-hidden">カテゴリで絞り込む</label>
-                    <select name="filter_category" id="filter_category" class="form-select">
+                    <label for="search" class="visually-hidden">検索</label>
+                    <input type="search" class="form-control" id="search" name="search" placeholder="タイトル, 作者名, コメントで検索..." value="<?php echo htmlspecialchars($current_search_keyword, ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="filter_category" class="visually-hidden">カテゴリ</label>
+                    <select class="form-select" id="filter_category" name="filter_category">
                         <option value="">すべてのカテゴリ</option>
                         <?php foreach ($categories as $category): ?>
-                            <option value="<?= htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8') ?>"
-                                <?= (isset($current_filter_category) && $current_filter_category === $category['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?>
+                            <option value="<?php echo htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($current_filter_category === $category['id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8'); ?> (<?php echo isset($category_work_counts[$category['id']]) ? $category_work_counts[$category['id']] : 0; ?>)
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-5">
-                    <label for="search" class="visually-hidden">キーワード検索</label>
-                    <input type="text" name="search" id="search" class="form-control" 
-                           placeholder="タイトル, 作品ID, 著者名で検索..."
-                           value="<?= isset($current_search_keyword) ? htmlspecialchars($current_search_keyword, ENT_QUOTES, 'UTF-8') : '' ?>">
+
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">絞り込み</button>
                 </div>
-                <div class="col-md-3 d-grid">
-                    <button type="submit" class="btn btn-info">絞り込む</button>
+                 <div class="col-md-3 text-end">
+                    <a href="admin.php?action=edit_category" class="btn btn-secondary">カテゴリ追加</a>
+                    <a href="admin.php?action=add_work" class="btn btn-success">作品追加</a>
                 </div>
             </form>
         </div>
     </div>
 
-    <table class="table table-striped table-bordered table-sm">
-        <thead class="table-dark">
-            <tr>
-                <th></th>
-                <th><?= sort_link('タイトル', 'title', $current_sort_key, $current_sort_order, $current_filter_category, $current_search_keyword) ?></th>
-                <th>カテゴリ</th>
-                <th><?= sort_link('公開日', 'open', $current_sort_key, $current_sort_order, $current_filter_category, $current_search_keyword) ?></th>
-                <th>作品ID</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (!empty($works)): ?>
-                <?php foreach ($works as $work): ?>
-                    <tr>
-                        <td>
-                            <?php
-                            $is_new = false;
-                            if (!empty($work['open'])) {
-                                $open_timestamp = strtotime($work['open']);
-                                if (time() - $open_timestamp < (60 * 60 * 24 * 7)) { // 7日間
-                                    $is_new = true;
-                                }
-                            }
-                            if ($is_new) {
-                                echo '<span class="badge bg-danger">NEW</span>';
-                            }
-                            ?>
-                        </td>
-                        <td><?= htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8') ?></td>
-                        <td>
-                            <?php
-                            $category_name = '未分類';
-                            foreach ($categories as $category) {
-                                if ($category['id'] === $work['category_id']) {
-                                    $category_name = $category['name'];
-                                    break;
-                                }
-                            }
-                            echo htmlspecialchars($category_name, ENT_QUOTES, 'UTF-8');
-                            ?>
-                        </td>
-                        <td><?= isset($work['open']) ? htmlspecialchars($work['open'], ENT_QUOTES, 'UTF-8') : '' ?></td>
-                        <td><?= htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8') ?></td>
-                        <td>
-                            <a href="admin.php?action=edit_work&id=<?= urlencode($work['work_id']) ?>" class="btn btn-secondary btn-sm">編集</a>
-                            <a href="admin.php?action=delete_work&id=<?= urlencode($work['work_id']) ?>" 
-                               class="btn btn-danger btn-sm" 
-                               onclick="return confirm('本当に「<?= htmlspecialchars(addslashes($work['title']), ENT_QUOTES, 'UTF-8') ?>」を削除しますか？この操作は元に戻せません。');">
-                               削除
-                            </a>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php else: ?>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
                 <tr>
-                    <td colspan="6" class="text-center">表示する作品がありません。</td>
+                    <th scope="col">
+                        <a href="?action=dashboard&sort=title&order=<?php echo get_opposite_order($current_sort_order); ?>" class="text-white text-decoration-none">
+                            作品タイトル<?php echo get_sort_indicator('title', $current_sort_key, $current_sort_order); ?>
+                        </a>
+                    </th>
+                    <th scope="col">
+                         <a href="?action=dashboard&sort=author&order=<?php echo get_opposite_order($current_sort_order); ?>" class="text-white text-decoration-none">
+                            作者<?php echo get_sort_indicator('author', $current_sort_key, $current_sort_order); ?>
+                        </a>
+                    </th>
+                    <th scope="col">カテゴリ</th>
+                    <th scope="col">
+                        <a href="?action=dashboard&sort=open&order=<?php echo get_opposite_order($current_sort_order); ?>" class="text-white text-decoration-none">
+                            公開日<?php echo get_sort_indicator('open', $current_sort_key, $current_sort_order); ?>
+                        </a>
+                    </th>
+                    <th scope="col">操作</th>
                 </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
-    
-    <nav aria-label="Page navigation">
-        <?php render_pagination($current_page, $total_pages, $current_sort_key, $current_sort_order, $current_filter_category, $current_search_keyword); ?>
-    </nav>
-</section>
+            </thead>
+            <tbody>
+                <?php if (empty($works)): ?>
+                    <tr>
+                        <td colspan="5" class="text-center">表示する作品がありません。</td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($works as $work): ?>
+                        <tr>
+                            <td class="align-middle">
+                                <?php
+                                // ★★★ここからが変更箇所★★★
+                                // 由来情報に応じたバッジを生成
+                                $source_badge = '';
+                                if (isset($work['source'])) {
+                                    if ($work['source'] === 'added') {
+                                        $source_badge = ' <span class="badge" style="background-color: #198754;">新規</span>'; // Bootstrap 5 success green
+                                    } elseif ($work['source'] === 'updated') {
+                                        $source_badge = ' <span class="badge" style="background-color: #0d6efd;">更新</span>'; // Bootstrap 5 primary blue
+                                    }
+                                }
+                                ?>
+                                <a href="admin.php?action=edit_work&id=<?php echo htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php echo htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8'); ?>
+                                </a>
+                                <?php echo $source_badge; // 生成したバッジを表示 ?>
+                                <?php // ★★★ここまでが変更箇所★★★ ?>
+                            </td>
+                            <td class="align-middle"><?php echo htmlspecialchars($work['author'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td class="align-middle">
+                                <?php
+                                $category_name = '未分類';
+                                if (isset($work['category_id']) && isset($categories[$work['category_id']])) {
+                                    $category_name = $categories[$work['category_id']]['name'];
+                                }
+                                echo htmlspecialchars($category_name, ENT_QUOTES, 'UTF-8');
+                                ?>
+                            </td>
+                            <td class="align-middle"><?php echo htmlspecialchars($work['open'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td class="align-middle">
+                                <a href="admin.php?action=edit_work&id=<?php echo htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-primary">編集</a>
+                                <a href="admin.php?action=delete_work&id=<?php echo htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('本当にこの作品を削除しますか？');">削除</a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <?php if ($total_pages > 1): ?>
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <li class="page-item <?php echo ($i == $current_page) ? 'active' : ''; ?>">
+                        <a class="page-link" href="?action=dashboard&page_num=<?php echo $i; ?>&sort=<?php echo htmlspecialchars($current_sort_key, ENT_QUOTES, 'UTF-8'); ?>&order=<?php echo htmlspecialchars($current_sort_order, ENT_QUOTES, 'UTF-8'); ?>&filter_category=<?php echo htmlspecialchars($current_filter_category, ENT_QUOTES, 'UTF-8'); ?>&search=<?php echo htmlspecialchars($current_search_keyword, ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php echo $i; ?>
+                        </a>
+                    </li>
+                <?php endfor; ?>
+            </ul>
+        </nav>
+    <?php endif; ?>
+
+</div>

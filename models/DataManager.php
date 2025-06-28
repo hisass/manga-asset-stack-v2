@@ -1,216 +1,180 @@
 <?php
-
+/**
+ * データ管理クラス (ベースファイル + 差分ファイル方式)
+ * 【修正版】日本語エスケープ対応、由来情報(source)の付与に対応
+ */
 class DataManager {
-    private $data_file_path;
+    private $data_path;
+    private $delta_path;
+
+    private $baseData = array();
+    private $deltaData = array();
     private $data = array();
 
     public function __construct() {
-        $this->data_file_path = BASE_DIR_PATH . '/data/sozai_v2.json';
-        $this->loadData();
+        $this->data_path = BASE_DIR_PATH . '/data/sozai_v2.json';
+        $this->delta_path = BASE_DIR_PATH . '/data/sozai_v2_delta.json';
+        $this->loadAndMergeData();
     }
 
-    private function loadData() {
-        if (!file_exists($this->data_file_path)) {
-            $this->data = array('categories' => array(), 'works' => array());
-            return true;
-        }
-        $json_string = file_get_contents($this->data_file_path);
-        if (empty($json_string)) {
-            $this->data = array('categories' => array(), 'works' => array());
-            return true;
-        }
-        $decoded_data = json_decode($json_string, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            $this->data = $decoded_data;
+    private function loadAndMergeData() {
+        if (file_exists($this->data_path)) {
+            $this->baseData = json_decode(file_get_contents($this->data_path), true);
         } else {
-            $this->data = array('categories' => array(), 'works' => array());
-            return false;
+            $this->baseData = array('categories' => array(), 'works' => array());
         }
-        return true;
-    }
 
-    public function saveData() {
-        $json_string = json_encode($this->data);
-        return file_put_contents($this->data_file_path, $json_string, LOCK_EX) !== false;
-    }
-
-    public function getCategories() {
-        return isset($this->data['categories']) ? $this->data['categories'] : array();
-    }
-
-    /**
-     * 作品リストを、フィルタリング、ソート、ページネーションを適用して取得する
-     * @param string|null $category_id 絞り込むカテゴリのID
-     * @param string|null $search_keyword 検索キーワード
-     * @param string $sort_key 並び替えのキー
-     * @param string $sort_order 昇順(asc)か降順(desc)か
-     * @return array 絞り込まれた作品のリスト
-     */
-    public function getWorks($category_id = null, $search_keyword = null, $sort_key = 'open', $sort_order = 'desc') {
-        $works = isset($this->data['works']) ? $this->data['works'] : array();
-
-        // 1. カテゴリによるフィルタリング
-        if ($category_id !== null && $category_id !== '') {
-            $works = array_filter($works, function($work) use ($category_id) {
-                return isset($work['category_id']) && $work['category_id'] === $category_id;
-            });
+        if (file_exists($this->delta_path)) {
+            $this->deltaData = json_decode(file_get_contents($this->delta_path), true);
+        } else {
+            $this->deltaData = array(
+                'works' => array('added' => array(), 'updated' => array(), 'deleted' => array()),
+                'categories' => array('added' => array(), 'updated' => array(), 'deleted' => array())
+            );
         }
-        
-        // 2. キーワードによるフィルタリング
-        if ($search_keyword !== null && $search_keyword !== '') {
-            $works = array_filter($works, function($work) use ($search_keyword) {
-                // タイトル、作品ID、著者名に含まれているかチェック（大文字小文字を区別しない）
-                $title = isset($work['title']) ? $work['title'] : '';
-                $work_id = isset($work['work_id']) ? $work['work_id'] : '';
-                $author = isset($work['author']) ? $work['author'] : '';
-                return (
-                    stripos($title, $search_keyword) !== false ||
-                    stripos($work_id, $search_keyword) !== false ||
-                    stripos($author, $search_keyword) !== false
-                );
-            });
-        }
-        
-        // 3. ソート処理
-        usort($works, $this->buildSorter($sort_key, $sort_order));
 
-        return $works;
+        $this->data = $this->merge($this->baseData, $this->deltaData);
     }
     
-    private function buildSorter($key, $order) {
-        return function ($a, $b) use ($key, $order) {
-            $val_a = isset($a[$key]) ? $a[$key] : '';
-            $val_b = isset($b[$key]) ? $b[$key] : '';
-
-            if ($key === 'open') {
-                $val_a = strtotime($val_a);
-                $val_b = strtotime($val_b);
-            }
-
-            if ($val_a == $val_b) return 0;
-
-            if ($order === 'desc') {
-                return ($val_a > $val_b) ? -1 : 1;
-            } else {
-                return ($val_a < $val_b) ? -1 : 1;
-            }
-        };
-    }
-
-    public function getWorkById($work_id) {
-        if (isset($this->data['works'])) {
-            foreach ($this->data['works'] as $work) {
-                if (isset($work['work_id']) && $work['work_id'] === $work_id) {
-                    return $work;
-                }
-            }
+    private function merge($base, $delta) {
+        // --- 作品データのマージ ---
+        $mergedWorks = isset($base['works']) ? $base['works'] : array();
+        // ★ベースデータにsource情報を付与
+        foreach ($mergedWorks as $work_id => &$work) {
+            $work['source'] = 'base';
         }
-        return null;
-    }
+        unset($work);
 
-    // ... (addWork, updateWork, deleteWorkなどの他のメソッドは変更なし) ...
-    public function updateWork($work_id, $new_data) {
-        $work_found_and_updated = false;
+        if (!empty($delta['works']['deleted'])) {
+            $deleted_ids = array_flip($delta['works']['deleted']);
+            $mergedWorks = array_diff_key($mergedWorks, $deleted_ids);
+        }
         
-        foreach ($this->data['works'] as $index => $work) {
-            if (isset($work['work_id']) && $work['work_id'] === $work_id) {
-                
-                $this->data['works'][$index]['title'] = isset($new_data['title']) ? $new_data['title'] : '';
-                $this->data['works'][$index]['title_ruby'] = isset($new_data['title_ruby']) ? $new_data['title_ruby'] : '';
-                $this->data['works'][$index]['author'] = isset($new_data['author']) ? $new_data['author'] : '';
-                $this->data['works'][$index]['author_ruby'] = isset($new_data['author_ruby']) ? $new_data['author_ruby'] : '';
-                $this->data['works'][$index]['category_id'] = isset($new_data['category_id']) ? $new_data['category_id'] : '';
-                $this->data['works'][$index]['comment'] = isset($new_data['comment']) ? $new_data['comment'] : '';
-
-                $work_found_and_updated = true;
-                break;
-            }
-        }
-
-        if ($work_found_and_updated) {
-            return $this->saveData();
-        }
-
-        return false;
-    }
-
-    public function addWork($new_data) {
-        $work_id = isset($new_data['work_id']) ? trim($new_data['work_id']) : '';
-        if (empty($work_id) || $this->getWorkById($work_id) !== null) {
-            return false; 
-        }
-        $new_work_entry = array(
-            'work_id'     => $work_id,
-            'title'       => isset($new_data['title']) ? $new_data['title'] : '',
-            'title_ruby'  => isset($new_data['title_ruby']) ? $new_data['title_ruby'] : '',
-            'author'      => isset($new_data['author']) ? $new_data['author'] : '',
-            'author_ruby' => isset($new_data['author_ruby']) ? $new_data['author_ruby'] : '',
-            'category_id' => isset($new_data['category_id']) ? $new_data['category_id'] : '',
-            'comment'     => isset($new_data['comment']) ? $new_data['comment'] : '',
-            'title_id'    => '',
-            'copyright'   => '',
-            'open'        => date('Y-m-d'),
-            'path'        => ''
-        );
-        $this->data['works'][] = $new_work_entry;
-        return $this->saveData();
-    }
-
-    public function deleteWork($work_id) {
-        $work_found = false;
-        $works = $this->getWorks();
-        foreach ($works as $index => $work) {
-            if (isset($work['work_id']) && $work['work_id'] === $work_id) {
-                array_splice($this->data['works'], $index, 1);
-                $work_found = true;
-                break;
-            }
-        }
-        if ($work_found) {
-            return $this->saveData();
-        }
-        return false;
-    }
-
-    public function getCategoryById($category_id) {
-        if (isset($this->data['categories'])) {
-            foreach ($this->data['categories'] as $category) {
-                if (isset($category['id']) && $category['id'] === $category_id) {
-                    return $category;
+        // ★更新処理でsource情報を上書き
+        if (!empty($delta['works']['updated'])) {
+            foreach ($delta['works']['updated'] as $work_id => $update_data) {
+                if (isset($mergedWorks[$work_id])) {
+                    $mergedWorks[$work_id] = array_merge($mergedWorks[$work_id], $update_data);
+                    $mergedWorks[$work_id]['source'] = 'updated'; // sourceキーを上書き
                 }
             }
         }
-        return null; // 見つからなかった場合
-    }
+        
+        // ★追加処理でsource情報を付与
+        if (!empty($delta['works']['added'])) {
+             foreach ($delta['works']['added'] as $work_id => $added_work) {
+                 $added_work['source'] = 'added';
+                 $mergedWorks[$work_id] = $added_work;
+             }
+        }
+        
+        // --- カテゴリデータのマージ ---
+        $mergedCategories = isset($base['categories']) ? $base['categories'] : array();
+        foreach ($mergedCategories as $cat_id => &$cat) {
+            $cat['source'] = 'base';
+        }
+        unset($cat);
 
-    public function addCategory($new_data) {
-        $new_id = 'cat_' . str_pad(count($this->getCategories()) + 1, 3, '0', STR_PAD_LEFT);
-        $new_category_entry = array(
-            'id' => $new_id,
-            'name' => isset($new_data['name']) ? $new_data['name'] : '',
-            'alias' => isset($new_data['alias']) ? $new_data['alias'] : '',
-            'directory_name' => isset($new_data['directory_name']) ? $new_data['directory_name'] : '',
-            'title_count' => isset($new_data['title_count']) ? (int)$new_data['title_count'] : 0,
-        );
-        $this->data['categories'][] = $new_category_entry;
-        return $this->saveData();
-    }
-
-    public function updateCategory($category_id, $new_data) {
-        $category_found_and_updated = false;
-        foreach ($this->data['categories'] as $index => $category) {
-            if (isset($category['id']) && $category['id'] === $category_id) {
-                $this->data['categories'][$index]['name'] = isset($new_data['name']) ? $new_data['name'] : '';
-                $this->data['categories'][$index]['alias'] = isset($new_data['alias']) ? $new_data['alias'] : '';
-                $this->data['categories'][$index]['directory_name'] = isset($new_data['directory_name']) ? $new_data['directory_name'] : '';
-                $this->data['categories'][$index]['title_count'] = isset($new_data['title_count']) ? (int)$new_data['title_count'] : 0;
-                $category_found_and_updated = true;
-                break;
+        if (!empty($delta['categories']['deleted'])) {
+            $deleted_ids = array_flip($delta['categories']['deleted']);
+            $mergedCategories = array_diff_key($mergedCategories, $deleted_ids);
+        }
+        if (!empty($delta['categories']['updated'])) {
+            foreach ($delta['categories']['updated'] as $cat_id => $update_data) {
+                if (isset($mergedCategories[$cat_id])) {
+                    $mergedCategories[$cat_id] = array_merge($mergedCategories[$cat_id], $update_data);
+                    $mergedCategories[$cat_id]['source'] = 'updated';
+                }
             }
         }
-        if ($category_found_and_updated) {
-            return $this->saveData();
+        if (!empty($delta['categories']['added'])) {
+            foreach ($delta['categories']['added'] as $cat_id => $added_cat) {
+                 $added_cat['source'] = 'added';
+                 $mergedCategories[$cat_id] = $added_cat;
+             }
         }
-        return false;
+
+        return array('categories' => $mergedCategories, 'works' => $mergedWorks);
+    }
+    
+    private function saveDeltaData() {
+        $json_string = json_encode($this->deltaData);
+        
+        // ★★★ここからが修正箇所★★★
+        // PHP 5.3互換のJSON_UNESCAPED_UNICODE対応
+        $unescaped_json_string = preg_replace_callback(
+            '/\\\\u([0-9a-fA-F]{4})/',
+            function ($match) {
+                return mb_convert_encoding(pack('H*', $match[1]), 'UTF-8', 'UCS-2BE');
+            },
+            $json_string
+        );
+        // ★★★ここまでが修正箇所★★★
+
+        return file_put_contents($this->delta_path, $unescaped_json_string) !== false;
+    }
+
+    // --- (get, add, update, delete等のメソッドは変更ありません) ---
+    public function getCategories() { return $this->data['categories']; }
+    public function getCategoryById($category_id) { return isset($this->data['categories'][$category_id]) ? $this->data['categories'][$category_id] : null; }
+    public function getWorkById($work_id) { return isset($this->data['works'][$work_id]) ? $this->data['works'][$work_id] : null; }
+    public function getWorks($filter_category = null, $search_keyword = null, $sort_key = 'open', $sort_order = 'desc') {
+        $works = $this->data['works'];
+        if ($filter_category) {
+            $works = array_filter($works, function($work) use ($filter_category) { return isset($work['category_id']) && $work['category_id'] === $filter_category; });
+        }
+        if ($search_keyword) {
+            $works = array_filter($works, function($work) use ($search_keyword) {
+                return (isset($work['title']) && stripos($work['title'], $search_keyword) !== false) ||
+                       (isset($work['author']) && stripos($work['author'], $search_keyword) !== false) ||
+                       (isset($work['comment']) && stripos($work['comment'], $search_keyword) !== false);
+            });
+        }
+        if ($sort_key) {
+            usort($works, function($a, $b) use ($sort_key, $sort_order) {
+                $val_a = isset($a[$sort_key]) ? $a[$sort_key] : '';
+                $val_b = isset($b[$sort_key]) ? $b[$sort_key] : '';
+                if ($val_a == $val_b) return 0;
+                $result = ($val_a < $val_b) ? -1 : 1;
+                return ($sort_order === 'desc') ? -$result : $result;
+            });
+        }
+        return $works;
+    }
+    public function addWork($postData) {
+        $work_id = 'work_' . uniqid(rand(), true);
+        $newWork = array( 'work_id' => $work_id, 'title' => isset($postData['title']) ? trim($postData['title']) : '', 'title_ruby' => isset($postData['title_ruby']) ? trim($postData['title_ruby']) : '', 'author' => isset($postData['author']) ? trim($postData['author']) : '', 'author_ruby' => isset($postData['author_ruby']) ? trim($postData['author_ruby']) : '', 'category_id' => isset($postData['category_id']) ? $postData['category_id'] : '', 'comment' => isset($postData['comment']) ? trim($postData['comment']) : '', 'title_id' => isset($postData['title_id']) ? trim($postData['title_id']) : '', 'directory_name' => isset($postData['directory_name']) ? trim($postData['directory_name']) : '', 'copyright' => isset($postData['copyright']) ? trim($postData['copyright']) : '', 'open' => isset($postData['open']) && $postData['open'] ? trim($postData['open']) : date('Y-m-d'), 'assets' => array() );
+        $this->deltaData['works']['added'][$work_id] = $newWork;
+        return $this->saveDeltaData();
+    }
+    public function updateWork($work_id, $postData) {
+        if (isset($this->deltaData['works']['added'][$work_id])) {
+            $this->deltaData['works']['added'][$work_id] = array_merge($this->deltaData['works']['added'][$work_id], $postData);
+        } else { 
+            if (!isset($this->deltaData['works']['updated'][$work_id])) { $this->deltaData['works']['updated'][$work_id] = array(); }
+            $this->deltaData['works']['updated'][$work_id] = array_merge($this->deltaData['works']['updated'][$work_id], $postData);
+        }
+        return $this->saveDeltaData();
+    }
+    public function deleteWork($work_id) {
+        if (isset($this->deltaData['works']['added'][$work_id])) { unset($this->deltaData['works']['added'][$work_id]); }
+        if (isset($this->deltaData['works']['updated'][$work_id])) { unset($this->deltaData['works']['updated'][$work_id]); }
+        if (isset($this->baseData['works'][$work_id])) { if (!in_array($work_id, $this->deltaData['works']['deleted'])) { $this->deltaData['works']['deleted'][] = $work_id; } }
+        return $this->saveDeltaData();
+    }
+    public function addCategory($postData) {
+        $cat_id = 'cat_' . preg_replace('/[^a-z0-9_]+/i', '', strtolower(str_replace(' ', '_', $postData['name']))) . '_' . time();
+        $newCategory = array( 'id' => $cat_id, 'name' => isset($postData['name']) ? trim($postData['name']) : '', 'alias' => isset($postData['alias']) ? trim($postData['alias']) : '', 'directory_name' => isset($postData['directory_name']) ? trim($postData['directory_name']) : '', 'title_count' => isset($postData['title_count']) ? (int)$postData['title_count'] : 0, );
+        $this->deltaData['categories']['added'][$cat_id] = $newCategory;
+        return $this->saveDeltaData();
+    }
+    public function updateCategory($category_id, $postData) {
+        if (isset($this->deltaData['categories']['added'][$category_id])) {
+            $this->deltaData['categories']['added'][$category_id] = array_merge($this->deltaData['categories']['added'][$category_id], $postData);
+        } else {
+            if (!isset($this->deltaData['categories']['updated'][$category_id])) { $this->deltaData['categories']['updated'][$category_id] = array(); }
+            $this->deltaData['categories']['updated'][$category_id] = array_merge($this->deltaData['categories']['updated'][$category_id], $postData);
+        }
+        return $this->saveDeltaData();
     }
 }

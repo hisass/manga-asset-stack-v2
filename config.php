@@ -11,3 +11,9 @@ define('ASSET_PATH_V1', BASE_DIR_PATH . '/../dmpc-materials/contents');
 
 // v2のアセットパス (manga-asset-stack-v2フォルダの直下にある)
 define('ASSET_PATH_V2', BASE_DIR_PATH . '/contents');
+
+// 3. アプリケーションのベースURLを定義
+// (例: http://localhost/manga-asset-stack-v2)
+$base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
+$base_url .= rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+define('BASE_URL', $base_url);
