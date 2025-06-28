@@ -1,179 +1,29 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?> - Manga Asset Stack v2 Admin</title>
+    <title><?php echo isset($title) ? htmlspecialchars($title, ENT_QUOTES, 'UTF-8') : 'ダッシュボード'; ?> - Manga Asset Stack v2 Admin</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     
-<style>
-    #site-logo {
-    font-size: 2.0rem; /* 文字サイズを大きくします。この数値はお好みで調整してください */
-    font-weight: 500;  /* 少しだけ太字にして視認性を上げる */
-    line-height: 1;    /* 文字の高さを詰めて、バーの中央に配置されやすくする */
-}
-
-/* スクロールボタン共通のスタイル */
-.page-scroll-btn {
-    position: fixed; /* 画面に固定表示 */
-    right: 20px;     /* 画面の右から20pxの位置 */
-    width: 50px;     /* ボタンの幅 */
-    height: 50px;    /* ボタンの高さ */
-    border-radius: 50%; /* 角を丸くして円形にする */
-    background-color: rgba(0, 0, 0, 0.5); /* 半透明の黒 */
-    color: white;    /* 中のアイコンの色 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    transition: opacity 0.3s, visibility 0.3s; /* フワッと表示/非表示させるためのアニメーション */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    z-index: 1000; /* 他の要素より手前に表示 */
-}
-
-/* 一番下へボタンの位置 */
-#page-bottom-btn {
-    bottom: 20px;
-}
-
-/* 一番上へボタンの位置 */
-#page-top-btn {
-    bottom: 80px;
-    opacity: 0;      /* 初期状態では透明 */
-    visibility: hidden; /* 初期状態では非表示 */
-}
-
-/* JavaScriptでこのクラスを追加して表示させる */
-#page-top-btn.show {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* ボタンの中のSVGアイコンのサイズ調整 */
-.page-scroll-btn svg {
-    width: 24px;
-    height: 24px;
-}
-
-#theme-toggle-btn svg {
-    transition: transform 0.3s ease;
-}
-
-#theme-toggle-btn.sun-mode svg {
-    transform: rotate(90deg);
-}
-
-/* ダークモードの時のスタイル */
-[data-bs-theme="dark"] .thumbnail-container {
-    background-color: #343a40; /* Bootstrapのダークな背景色に近い色 */
-}
-
-/* カテゴリナビゲーションのコンテナ設定 */
-.category-nav .navbar-collapse {
-    overflow-x: auto; /* はみ出した場合に横スクロールバーを表示 */
-}
-
-.category-nav .navbar-nav {
-    white-space: nowrap; /* テキストの折り返しを禁止 */
-    flex-wrap: nowrap;
-}
-
-/* カテゴリナビゲーションの文字をさらに小さくする */
-.category-nav .nav-link {
-    font-size: 0.7rem; /* さらに小さいサイズに調整 */
-    padding-top: 0.1rem;
-    padding-bottom: 0.1rem;
-}
-
-/* トップページの作品カードのホバーエフェクト */
-.work-card-link .card {
-    transition: all 0.2s ease-in-out; /* エフェクトを滑らかにする */
-}
-
-.work-card-link:hover .card {
-    background-color: #f8f9fa;       /* 背景色を薄いグレーに */
-    transform: translateY(-5px);       /* 少しだけ上に浮き上がらせる */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 影を少し濃くする */
-}
-
-/* :root にCSS変数を定義することで、サイト全体の色を管理しやすくなります */
-:root {
-  --bs-dark-rgb: 45, 50, 56; /* ヘッダーの背景色を、真っ黒からチャコールグレーに変更 */
-  --bs-secondary-rgb: 120, 130, 140; /* サブナビゲーションの色を少し調整 */
-  --bs-link-color: #005A9C; /* リンクの色を、標準の青から少し落ち着いた青に変更 */
-  --bs-link-hover-color: #003E6B; /* マウスオーバー時の色も合わせる */
-}
-
-/* ヘッダーの文字色を調整 */
-.navbar-brand small {
-    opacity: 0.8; /* [Internal β] の文字を少しだけ透明にする */
-}
-
-/* assets/css/style.css に追記 */
-
-/* サイト全体のカードから枠線を消し、代わりに影を付ける */
-.card {
-    border: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-/* マウスオーバー時の影を少し濃くする */
-.work-card-link:hover .card {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-}
-
-/* --- 管理画面のページネーション表示崩れを強制的に修正するCSS --- */
-
-.pagination {
-    display: flex;
-    justify-content: center;
-    padding-left: 0;
-    list-style: none;
-    border-radius: .25rem;
-}
-
-.page-item .page-link {
-    position: relative;
-    display: block;
-    padding: .5rem .75rem;
-    margin-left: -1px;
-    line-height: 1.25;
-    color: #0d6efd; /* Bootstrapの標準的なリンク色 */
-    background-color: #fff;
-    border: 1px solid #dee2e6;
-    transition: all .2s ease-in-out;
-    text-decoration: none; /* 下線を消す */
-}
-
-.page-item .page-link:hover {
-    z-index: 2;
-    color: #0a58ca;
-    background-color: #e9ecef;
-    border-color: #dee2e6;
-}
-
-.page-item.active .page-link {
-    z-index: 3;
-    color: #fff;
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
-
-.page-item.disabled .page-link {
-    color: #6c757d;
-    pointer-events: none;
-    background-color: #fff;
-    border-color: #dee2e6;
-}
-</style>
-
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/style.php">
 
 </head>
 <body>
-<nav class="navbar navbar-dark bg-dark">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
-        <span class="navbar-brand mb-0 h1">Manga Asset Stack [Admin]</span>
+        <a class="navbar-brand" href="admin.php" id="site-logo">
+            Manga Asset Stack
+            <small class="text-muted" style="font-size: 0.8rem;">[Admin]</small>
+        </a>
+        
+        <button id="theme-toggle-btn" class="btn btn-outline-light ms-auto">
+            <i class="bi bi-moon-stars-fill"></i>
+        </button>
     </div>
 </nav>
+
 <main class="container my-4">

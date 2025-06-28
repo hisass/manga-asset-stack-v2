@@ -1,24 +1,10 @@
 <?php
-// views/admin/dashboard.php
+// views/admin/dashboard.php (最終版)
 
-/**
- * @var array $works 作品リスト
- * @var array $categories カテゴリリスト
- * @var array $category_work_counts カテゴリごとの作品数
- * @var int $total_pages 総ページ数
- * @var int $current_page 現在のページ番号
- * @var string $current_sort_key 現在のソートキー
- * @var string $current_sort_order 現在のソート順
- * @var string|null $current_filter_category 現在のフィルターカテゴリ
- * @var string|null $current_search_keyword 現在の検索キーワード
- */
-
-// ソート順を反転させるためのヘルパー関数
 function get_opposite_order($order) {
     return ($order === 'asc') ? 'desc' : 'asc';
 }
 
-// ソート矢印を表示するためのヘルパー関数
 function get_sort_indicator($key, $current_key, $current_order) {
     if ($key === $current_key) {
         return ($current_order === 'asc') ? ' ▲' : ' ▼';
@@ -46,11 +32,13 @@ function get_sort_indicator($key, $current_key, $current_order) {
                     <label for="filter_category" class="visually-hidden">カテゴリ</label>
                     <select class="form-select" id="filter_category" name="filter_category">
                         <option value="">すべてのカテゴリ</option>
-                        <?php foreach ($categories as $category): ?>
-                            <option value="<?php echo htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($current_filter_category === $category['id']) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8'); ?> (<?php echo isset($category_work_counts[$category['id']]) ? $category_work_counts[$category['id']] : 0; ?>)
-                            </option>
-                        <?php endforeach; ?>
+                        <?php if (!empty($categories)): ?>
+                            <?php foreach ($categories as $category): ?>
+                                <option value="<?php echo htmlspecialchars($category['id'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($current_filter_category === $category['id']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8'); ?> (<?php echo isset($category_work_counts[$category['id']]) ? $category_work_counts[$category['id']] : 0; ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
 
@@ -99,20 +87,21 @@ function get_sort_indicator($key, $current_key, $current_order) {
                             <td class="align-middle">
                                 <?php
                                 // ★★★ここからが変更箇所★★★
-                                // 由来情報に応じたバッジを生成
                                 $source_badge = '';
                                 if (isset($work['source'])) {
                                     if ($work['source'] === 'added') {
-                                        $source_badge = ' <span class="badge" style="background-color: #198754;">新規</span>'; // Bootstrap 5 success green
+                                        // 「新規」を「v2」に変更し、位置調整スタイルを追加
+                                        $source_badge = ' <span class="badge" style="background-color: #198754; vertical-align: middle; margin-left: 4px;">v2</span>'; 
                                     } elseif ($work['source'] === 'updated') {
-                                        $source_badge = ' <span class="badge" style="background-color: #0d6efd;">更新</span>'; // Bootstrap 5 primary blue
+                                        // 位置調整スタイルを追加
+                                        $source_badge = ' <span class="badge" style="background-color: #0d6efd; vertical-align: middle; margin-left: 4px;">更新</span>';
                                     }
                                 }
                                 ?>
                                 <a href="admin.php?action=edit_work&id=<?php echo htmlspecialchars($work['work_id'], ENT_QUOTES, 'UTF-8'); ?>">
                                     <?php echo htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8'); ?>
                                 </a>
-                                <?php echo $source_badge; // 生成したバッジを表示 ?>
+                                <?php echo $source_badge; ?>
                                 <?php // ★★★ここまでが変更箇所★★★ ?>
                             </td>
                             <td class="align-middle"><?php echo htmlspecialchars($work['author'], ENT_QUOTES, 'UTF-8'); ?></td>
@@ -137,7 +126,7 @@ function get_sort_indicator($key, $current_key, $current_order) {
         </table>
     </div>
 
-    <?php if ($total_pages > 1): ?>
+    <?php if (isset($total_pages) && $total_pages > 1): ?>
         <nav aria-label="Page navigation">
             <ul class="pagination justify-content-center">
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>

@@ -7,80 +7,74 @@ class AdminController {
     }
 
     public function dashboard() {
-    // 1. ページネーションの準備
-    $works_per_page = 20; // 1ページあたりの表示件数
-    $all_works_for_count = $this->dataManager->getWorks(null, null, null, null); // フィルタなしで全件取得
-    $total_works = count($all_works_for_count);
-    $total_pages = $total_works > 0 ? ceil($total_works / $works_per_page) : 1;
-    $current_page = isset($_GET['page_num']) ? (int)$_GET['page_num'] : 1;
-    if ($current_page < 1) {
-        $current_page = 1;
-    }
-
-    // 2. フィルタとソートの準備
-    $current_filter_category = isset($_GET['filter_category']) ? $_GET['filter_category'] : null;
-    $current_search_keyword = isset($_GET['search']) && trim($_GET['search']) !== '' ? trim($_GET['search']) : null;
-    $current_sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open';
-    $current_sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc';
-
-    // 3. 表示する作品データを取得
-    $all_filtered_works = $this->dataManager->getWorks($current_filter_category, $current_search_keyword, $current_sort_key, $current_sort_order);
-    
-    // ページネーションのための絞り込み
-    $offset = ($current_page - 1) * $works_per_page;
-    $works_for_display = array_slice($all_filtered_works, $offset, $works_per_page);
-    
-    // 4. カテゴリ情報を取得
-    $categories = $this->dataManager->getCategories();
-    $category_work_counts = array();
-    foreach ($categories as $category) {
-        $category_work_counts[$category['id']] = 0;
-    }
-    // 作品数の集計は全作品から行う
-    foreach ($all_works_for_count as $work) {
-        if (isset($work['category_id']) && isset($category_work_counts[$work['category_id']])) {
-            $category_work_counts[$work['category_id']]++;
+        // 1. ページネーションの準備
+        $works_per_page = 20;
+        $all_works_for_count = $this->dataManager->getWorks(null, null, null, null);
+        $total_works = count($all_works_for_count);
+        $total_pages = $total_works > 0 ? ceil($total_works / $works_per_page) : 1;
+        $current_page = isset($_GET['page_num']) ? (int)$_GET['page_num'] : 1;
+        if ($current_page < 1) {
+            $current_page = 1;
         }
+
+        // 2. フィルタとソートの準備
+        $current_filter_category = isset($_GET['filter_category']) ? $_GET['filter_category'] : null;
+        $current_search_keyword = isset($_GET['search']) && trim($_GET['search']) !== '' ? trim($_GET['search']) : null;
+        $current_sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open';
+        $current_sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc';
+
+        // 3. 表示する作品データを取得
+        $all_filtered_works = $this->dataManager->getWorks($current_filter_category, $current_search_keyword, $current_sort_key, $current_sort_order);
+        
+        $offset = ($current_page - 1) * $works_per_page;
+        $works_for_display = array_slice($all_filtered_works, $offset, $works_per_page);
+        
+        // 4. カテゴリ情報を取得
+        $categories = $this->dataManager->getCategories();
+        $category_work_counts = array();
+        foreach ($categories as $category) {
+            $category_work_counts[$category['id']] = 0;
+        }
+        foreach ($all_works_for_count as $work) {
+            if (isset($work['category_id']) && isset($category_work_counts[$work['category_id']])) {
+                $category_work_counts[$work['category_id']]++;
+            }
+        }
+
+        // 5. ビューに変数を渡して表示
+        $this->loadView('dashboard', array(
+            'title' => '管理ダッシュボード',
+            'works' => $works_for_display,
+            'categories' => $categories,
+            'category_work_counts' => $category_work_counts,
+            'total_pages' => (int)$total_pages,
+            'current_page' => (int)$current_page,
+            'current_sort_key' => $current_sort_key,
+            'current_sort_order' => $current_sort_order,
+            'current_filter_category' => $current_filter_category,
+            'current_search_keyword' => $current_search_keyword
+        ));
     }
 
-    // 5. ビューに変数を渡して表示
-    // ★★★ここを render() から loadView() に修正しました★★★
-    $this->loadView('dashboard', array(
-        'works' => $works_for_display,
-        'categories' => $categories,
-        'category_work_counts' => $category_work_counts,
-        'total_pages' => (int)$total_pages,
-        'current_page' => (int)$current_page,
-        'current_sort_key' => $current_sort_key,
-        'current_sort_order' => $current_sort_order,
-        'current_filter_category' => $current_filter_category,
-        'current_search_keyword' => $current_search_keyword
-    ));
-}
-
-    // ... (他のメソッドは変更なし) ...
     public function addWork() {
         $data['title'] = '作品の新規追加';
         $data['work'] = array(
             'work_id' => '', 'title' => '', 'title_ruby' => '',
             'author' => '', 'author_ruby' => '', 'category_id' => '',
-            'comment' => ''
+            'comment' => '', 'title_id' => '', 'directory_name' => '',
+            'copyright' => '', 'open' => ''
         );
         $data['categories'] = $this->dataManager->getCategories();
         $this->loadView('edit_work_form', $data);
     }
 
     public function createWork($postData) {
-        $work_id = isset($postData['work_id']) ? trim($postData['work_id']) : '';
-        if (empty($work_id)) {
-            die('Error: 作品IDは必須です。');
-        }
         $success = $this->dataManager->addWork($postData);
         if ($success) {
             header('Location: admin.php?action=dashboard');
             exit;
         } else {
-            die('Error: データの追加に失敗しました。作品IDが既に存在している可能性があります。');
+            die('Error: データの追加に失敗しました。');
         }
     }
 
