@@ -166,6 +166,10 @@ class AdminController {
     private function loadView($viewName, $data = array()) {
         extract($data, EXTR_SKIP);
         $baseDir = BASE_DIR_PATH . '/views/admin/';
+    
+        // ★★★ この行を追加 ★★★
+        header('Content-Type: text/html; charset=utf-8');
+
         require_once $baseDir . "layouts/header.php";
         require_once $baseDir . "{$viewName}.php";
         require_once $baseDir . "layouts/footer.php";

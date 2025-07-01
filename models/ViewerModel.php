@@ -1,4 +1,6 @@
 <?php
+// models/ViewerModel.php
+
 class ViewerModel {
     private $dataManager;
 
@@ -7,31 +9,72 @@ class ViewerModel {
     }
 
     public function getCategories() {
-        // ここでは表示/非表示のロジックは入れず、全て返す
         return $this->dataManager->getCategories();
     }
 
+    public function getWorksByCategoryId($category_id) {
+        return $this->dataManager->getWorks($category_id);
+    }
+
     public function getWorkById($work_id) {
-        $all_works = $this->dataManager->getWorks();
-        foreach ($all_works as $work) {
-            if (isset($work['work_id']) && $work['work_id'] === $work_id) {
-                return $work;
-            }
-        }
-        return null; // 見つからなかった場合
+        return $this->dataManager->getWorkById($work_id);
     }
     
-    public function getWorksByCategoryId($category_id) {
-        $all_works = $this->dataManager->getWorks();
-        $filtered_works = array();
+    /**
+     * 指定された作品のアセット画像を探し、Webでアクセス可能なURLの配列を返す
+     * v1とv2の両方のアセットパスを検索対象とする
+     *
+     * @param array $work 作品データ配列
+     * @return array 画像URLの配列
+     */
+    public function getAssetsForWork($work) {
+        $asset_urls = array();
+        $allowed_extensions = array('jpg', 'jpeg', 'png', 'gif');
 
-        foreach ($all_works as $work) {
-            if (isset($work['category_id']) && $work['category_id'] === $category_id) {
-                $filtered_works[] = $work;
+        if (empty($work['directory_name'])) {
+            return $asset_urls; // ディレクトリ名がなければ空の配列を返す
+        }
+        $dir_name = $work['directory_name'];
+
+        // 検索対象のサーバー内パス
+        $paths_to_scan = array(
+            'v1' => ASSET_PATH_V1,
+            'v2' => ASSET_PATH_V2
+        );
+
+        // Webアクセス用のURLベースパス
+        // v1のアセットパスは一つ上の階層にあるため、BASE_URLからパスを調整する
+        $v1_web_base_path = dirname(BASE_URL) . '/dmpc-materials/contents';
+        $v2_web_base_path = BASE_URL . '/contents';
+
+        $web_base_paths = array(
+            'v1' => $v1_web_base_path,
+            'v2' => $v2_web_base_path
+        );
+
+        // v1, v2 両方のパスをスキャン
+        foreach ($paths_to_scan as $version => $base_path) {
+            $full_dir_path = $base_path . '/' . $dir_name;
+
+            if (is_dir($full_dir_path)) {
+                $files = scandir($full_dir_path);
+                foreach ($files as $file) {
+                    if ($file === '.' || $file === '..') {
+                        continue;
+                    }
+                    
+                    $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
+                    if (in_array($extension, $allowed_extensions)) {
+                        // ファイルへのWebアクセス可能なURLを構築して配列に追加
+                        $web_path = $web_base_paths[$version] . '/' . $dir_name . '/' . rawurlencode($file);
+                        $asset_urls[] = $web_path;
+                    }
+                }
             }
         }
-        return $filtered_works;
+        
+        // 重複を削除し、結果を返す
+        return array_unique($asset_urls);
     }
-
-    // 今後、検索機能などもここに追加していきます
 }

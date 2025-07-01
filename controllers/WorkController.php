@@ -1,4 +1,6 @@
 <?php
+// controllers/WorkController.php
+
 require_once BASE_DIR_PATH . '/models/ViewerModel.php';
 
 class WorkController {
@@ -25,10 +27,16 @@ class WorkController {
             }
         }
         $data['works_by_category'] = $works_by_category;
-        
+
+            var_dump($this->globalData['all_categories']);
+            exit;
+
         $this->loadView('home', $data);
     }
 
+    /**
+     * ★★★ ここを修正しました ★★★
+     */
     public function detail($work_id) {
         if (!$work_id) {
             header("Location: index.php");
@@ -44,17 +52,21 @@ class WorkController {
 
         $data['title'] = '作品詳細: ' . htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8');
         $data['work'] = $work;
-        // 画像一覧取得やダウンロード機能は、今後ここに追加していきます
-        $data['images'] = array(); 
+        
+        // 正しい場所でアセットリストを取得し、ビューに渡す
+        $data['assets'] = $this->viewerModel->getAssetsForWork($work);
         
         $this->loadView('detail', $data);
     }
 
     private function loadView($viewName, $data = array()) {
+        // 全ページ共通のデータをビュー用のデータにマージ
         $viewData = array_merge($this->globalData, $data);
         extract($viewData, EXTR_SKIP);
         
         $baseDir = BASE_DIR_PATH . '/views/viewer/';
+        // ヘッダーを読み込む前に、文字コードを宣言する
+        header('Content-Type: text/html; charset=utf-8');
         require_once $baseDir . "layouts/header.php";
         require_once $baseDir . "{$viewName}.php";
         require_once $baseDir . "layouts/footer.php";

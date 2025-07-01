@@ -1,3 +1,5 @@
+@charset "UTF-8";
+
 #site-logo {
     font-size: 2.0rem; /* 文字サイズを大きくします。この数値はお好みで調整してください */
     font-weight: 500;  /* 少しだけ太字にして視認性を上げる */
@@ -113,27 +115,10 @@
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* --- 管理画面のページネーション表示崩れを強制的に修正するCSS --- */
-
-.pagination {
+/* 管理画面のページネーションを正しく表示させるための、より強力なスタイル */
+.table-responsive + nav > .pagination {
     display: flex;
-    justify-content: center;
-    padding-left: 0;
-    list-style: none;
-    border-radius: .25rem;
-}
-
-.page-item .page-link {
-    position: relative;
-    display: block;
-    padding: .5rem .75rem;
-    margin-left: -1px;
-    line-height: 1.25;
-    color: #0d6efd; /* Bootstrapの標準的なリンク色 */
-    background-color: #fff;
-    border: 1px solid #dee2e6;
-    transition: all .2s ease-in-out;
-    text-decoration: none; /* 下線を消す */
+    flex-wrap: wrap;
 }
 
 .page-item .page-link:hover {
