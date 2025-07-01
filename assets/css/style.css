@@ -146,7 +146,7 @@
 .work-list-thumbnail {
     width: 80px;
     height: 80px;
-    object-fit: cover; /* 画像がコンテナに合わせてトリミングされる */
+    object-fit: contain; /* 画像全体が枠内に収まるように調整 */
     border-radius: 0.25rem; /* 少し角を丸める */
 }
 
@@ -158,4 +158,21 @@
 
 .category-title-link:hover h2 {
     color: #0a58ca; /* マウスオーバー時の少し濃い色 */
+}
+
+/* トップページの作品カードのサムネイル高さを固定 */
+.work-thumbnail-home {
+    height: 180px;
+    object-fit: contain; /* 画像全体が枠内に収まるように調整 */
+}
+
+/* トップページの作品カードのホバーエフェクト */
+.card-link {
+    display: block;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card-link:hover {
+    transform: translateY(-5px); /* 少し上に移動 */
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1); /* 影を濃くする */
 }
