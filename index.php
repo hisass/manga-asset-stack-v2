@@ -7,11 +7,9 @@ require_once __DIR__ . '/config.php';
 require_once BASE_DIR_PATH . '/models/DataManager.php';
 require_once BASE_DIR_PATH . '/controllers/WorkController.php';
 
-// DataManagerとWorkControllerをインスタンス化
 $dataManager = new DataManager();
 $controller = new WorkController($dataManager);
 
-// URLの?page=...の値によって呼び出すメソッドを切り替える
 $page = isset($_GET['page']) ? $_GET['page'] : 'home';
 
 switch ($page) {
@@ -20,16 +18,21 @@ switch ($page) {
         $controller->detail($work_id);
         break;
 
-    // ▼▼▼ この2つのcaseを追加 ▼▼▼
     case 'category':
         $category_id = isset($_GET['id']) ? $_GET['id'] : null;
         $controller->categoryPage($category_id);
         break;
+    
+    // ▼▼▼ このcaseを追加 ▼▼▼
+    case 'author':
+        $author_name = isset($_GET['name']) ? $_GET['name'] : null;
+        $controller->authorPage($author_name);
+        break;
+    // ▲▲▲ ここまでを追加 ▲▲▲
 
     case 'new':
         $controller->newArrivals();
         break;
-    // ▲▲▲ ここまでを追加 ▲▲▲
 
     case 'home':
     default:

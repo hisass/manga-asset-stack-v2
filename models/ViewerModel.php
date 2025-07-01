@@ -12,11 +12,9 @@ class ViewerModel {
         return $this->dataManager->getCategories();
     }
 
-    // ▼▼▼ このメソッドを修正 ▼▼▼
     public function getWorksByCategoryId($category_id, $sort_option = 'open_desc') {
         return $this->dataManager->getWorks($category_id, null, $sort_option);
     }
-    // ▲▲▲ ここまでを修正 ▲▲▲
 
     public function getWorkById($work_id) {
         return $this->dataManager->getWorkById($work_id);
@@ -27,11 +25,11 @@ class ViewerModel {
     }
 
     public function getAssetsForWork($work) {
-        $asset_urls = array();
+        $asset_details = array();
         $allowed_extensions = array('jpg', 'jpeg', 'png', 'gif');
 
         if (empty($work['directory_name'])) {
-            return $asset_urls;
+            return $asset_details;
         }
         $dir_name = $work['directory_name'];
 
@@ -54,20 +52,36 @@ class ViewerModel {
             if (is_dir($full_dir_path)) {
                 $files = scandir($full_dir_path);
                 foreach ($files as $file) {
-                    if ($file === '.' || $file === '..') {
-                        continue;
-                    }
-                    
+                    $file_path = $full_dir_path . '/' . $file;
                     $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
 
-                    if (in_array($extension, $allowed_extensions)) {
+                    if (is_file($file_path) && in_array($extension, $allowed_extensions)) {
                         $web_path = $web_base_paths[$version] . '/' . $dir_name . '/' . rawurlencode($file);
-                        $asset_urls[] = $web_path;
+                        
+                        $size_str = '';
+                        $image_size = getimagesize($file_path);
+                        if ($image_size) {
+                            $size_str = $image_size[0] . 'x' . $image_size[1] . 'px';
+                        }
+                        
+                        $date_str = '';
+                        $timestamp = filemtime($file_path);
+                        if ($timestamp) {
+                            $date_str = '作成日時: ' . date('Y-m-d H:i', $timestamp);
+                        }
+
+                        $asset_details[$web_path] = array(
+                            'url' => $web_path,
+                            'filename' => $file,
+                            'size_str' => $size_str,
+                            'date_str' => $date_str,
+                            'server_path' => $file_path // ★サーバー上のフルパスを追加
+                        );
                     }
                 }
             }
         }
         
-        return array_unique($asset_urls);
+        return array_values($asset_details);
     }
 }
