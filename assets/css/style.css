@@ -141,3 +141,21 @@
     background-color: #fff;
     border-color: #dee2e6;
 }
+
+/* カテゴリ一覧ページのリスト表示用スタイル */
+.work-list-thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover; /* 画像がコンテナに合わせてトリミングされる */
+    border-radius: 0.25rem; /* 少し角を丸める */
+}
+
+/* トップページのカテゴリ見出しリンクの色 */
+.category-title-link h2 {
+    color: #0d6efd; /* Bootstrapの標準リンク色 */
+    transition: color 0.15s ease-in-out;
+}
+
+.category-title-link:hover h2 {
+    color: #0a58ca; /* マウスオーバー時の少し濃い色 */
+}

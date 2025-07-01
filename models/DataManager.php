@@ -1,7 +1,6 @@
 <?php
 /**
  * データ管理クラス (ベースファイル + 差分ファイル方式)
- * 【修正版】日本語エスケープ対応、由来情報(source)の付与に対応
  */
 class DataManager {
     private $data_path;
@@ -19,13 +18,22 @@ class DataManager {
 
     private function loadAndMergeData() {
         if (file_exists($this->data_path)) {
-            $this->baseData = json_decode(file_get_contents($this->data_path), true);
+            $json_string = file_get_contents($this->data_path);
+            // BOM付きUTF-8ファイルに対応
+            if (substr($json_string, 0, 3) === "\xEF\xBB\xBF") {
+                $json_string = substr($json_string, 3);
+            }
+            $this->baseData = json_decode($json_string, true);
         } else {
             $this->baseData = array('categories' => array(), 'works' => array());
         }
 
         if (file_exists($this->delta_path)) {
-            $this->deltaData = json_decode(file_get_contents($this->delta_path), true);
+            $json_string = file_get_contents($this->delta_path);
+            if (substr($json_string, 0, 3) === "\xEF\xBB\xBF") {
+                $json_string = substr($json_string, 3);
+            }
+            $this->deltaData = json_decode($json_string, true);
         } else {
             $this->deltaData = array(
                 'works' => array('added' => array(), 'updated' => array(), 'deleted' => array()),
@@ -39,7 +47,6 @@ class DataManager {
     private function merge($base, $delta) {
         // --- 作品データのマージ ---
         $mergedWorks = isset($base['works']) ? $base['works'] : array();
-        // ★ベースデータにsource情報を付与
         foreach ($mergedWorks as $work_id => &$work) {
             $work['source'] = 'base';
         }
@@ -50,17 +57,15 @@ class DataManager {
             $mergedWorks = array_diff_key($mergedWorks, $deleted_ids);
         }
         
-        // ★更新処理でsource情報を上書き
         if (!empty($delta['works']['updated'])) {
             foreach ($delta['works']['updated'] as $work_id => $update_data) {
                 if (isset($mergedWorks[$work_id])) {
                     $mergedWorks[$work_id] = array_merge($mergedWorks[$work_id], $update_data);
-                    $mergedWorks[$work_id]['source'] = 'updated'; // sourceキーを上書き
+                    $mergedWorks[$work_id]['source'] = 'updated';
                 }
             }
         }
         
-        // ★追加処理でsource情報を付与
         if (!empty($delta['works']['added'])) {
              foreach ($delta['works']['added'] as $work_id => $added_work) {
                  $added_work['source'] = 'added';
@@ -99,9 +104,6 @@ class DataManager {
     
     private function saveDeltaData() {
         $json_string = json_encode($this->deltaData);
-        
-        // ★★★ここからが修正箇所★★★
-        // PHP 5.3互換のJSON_UNESCAPED_UNICODE対応
         $unescaped_json_string = preg_replace_callback(
             '/\\\\u([0-9a-fA-F]{4})/',
             function ($match) {
@@ -109,15 +111,26 @@ class DataManager {
             },
             $json_string
         );
-        // ★★★ここまでが修正箇所★★★
-
-        return file_put_contents($this->delta_path, $unescaped_json_string) !== false;
+        // ファイルの先頭にUTF-8のBOM(目印)を追加して保存する
+        return file_put_contents($this->delta_path, "\xEF\xBB\xBF" . $unescaped_json_string) !== false;
     }
 
-    // --- (get, add, update, delete等のメソッドは変更ありません) ---
     public function getCategories() { return $this->data['categories']; }
-    public function getCategoryById($category_id) { return isset($this->data['categories'][$category_id]) ? $this->data['categories'][$category_id] : null; }
+
+    // ▼▼▼ このメソッドを修正 ▼▼▼
+    public function getCategoryById($category_id) {
+        // キーでの直接参照をやめ、全件ループでIDが一致するものを探す、より確実な方法に変更
+        foreach ($this->data['categories'] as $cat_data) {
+            if (isset($cat_data['id']) && $cat_data['id'] === $category_id) {
+                return $cat_data;
+            }
+        }
+        return null; // 見つからなかった場合
+    }
+    // ▲▲▲ ここまでを修正 ▲▲▲
+
     public function getWorkById($work_id) { return isset($this->data['works'][$work_id]) ? $this->data['works'][$work_id] : null; }
+    
     public function getWorks($filter_category = null, $search_keyword = null, $sort_key = 'open', $sort_order = 'desc') {
         $works = $this->data['works'];
         if ($filter_category) {

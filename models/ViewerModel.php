@@ -20,6 +20,12 @@ class ViewerModel {
         return $this->dataManager->getWorkById($work_id);
     }
     
+    // ▼▼▼ このメソッドを丸ごと追加 ▼▼▼
+    public function getCategoryById($category_id) {
+        return $this->dataManager->getCategoryById($category_id);
+    }
+    // ▲▲▲ ここまでを追加 ▲▲▲
+
     /**
      * 指定された作品のアセット画像を探し、Webでアクセス可能なURLの配列を返す
      * v1とv2の両方のアセットパスを検索対象とする
