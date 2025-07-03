@@ -6,29 +6,21 @@ class AdminController {
         $this->dataManager = new DataManager();
     }
 
-    // ▼▼▼ このメソッドを修正 ▼▼▼
     public function dashboard() {
-        // ... (works_per_page からの処理は変更なし) ...
         $works_per_page = 20;
-        $all_works_for_count = $this->dataManager->getWorks(null, null, null, null);
+        $all_works_for_count = $this->dataManager->getWorks(null, null, null);
         $total_works = count($all_works_for_count);
         $total_pages = $total_works > 0 ? ceil($total_works / $works_per_page) : 1;
         $current_page = isset($_GET['page_num']) ? (int)$_GET['page_num'] : 1;
         if ($current_page < 1) { $current_page = 1; }
-
         $current_filter_category = isset($_GET['filter_category']) ? $_GET['filter_category'] : null;
         $current_search_keyword = isset($_GET['search']) && trim($_GET['search']) !== '' ? trim($_GET['search']) : null;
         $current_sort_key = isset($_GET['sort']) ? $_GET['sort'] : 'open';
         $current_sort_order = isset($_GET['order']) ? $_GET['order'] : 'desc';
-
-        // アクティブなタブをURLパラメータから取得
         $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'works';
-
-        $all_filtered_works = $this->dataManager->getWorks($current_filter_category, $current_search_keyword, $current_sort_key, $current_sort_order);
-        
+        $all_filtered_works = $this->dataManager->getWorks($current_filter_category, $current_search_keyword, $current_sort_key . '_' . $current_sort_order);
         $offset = ($current_page - 1) * $works_per_page;
         $works_for_display = array_slice($all_filtered_works, $offset, $works_per_page);
-        
         $categories = $this->dataManager->getCategories();
         $category_work_counts = array();
         foreach ($categories as $category) {
@@ -39,27 +31,27 @@ class AdminController {
                 $category_work_counts[$work['category_id']]++;
             }
         }
-
         $this->loadView('dashboard', array(
             'title' => '管理ダッシュボード', 'works' => $works_for_display, 'categories' => $categories,
             'category_work_counts' => $category_work_counts, 'total_pages' => (int)$total_pages,
             'current_page' => (int)$current_page, 'current_sort_key' => $current_sort_key,
             'current_sort_order' => $current_sort_order, 'current_filter_category' => $current_filter_category,
-            'current_search_keyword' => $current_search_keyword,
-            'active_tab' => $active_tab // ビューに渡す
+            'current_search_keyword' => $current_search_keyword, 'active_tab' => $active_tab
         ));
     }
 
+    // ▼▼▼ このメソッドを修正 ▼▼▼
     public function addWork() {
         $data['title'] = '作品の新規追加';
         $data['work'] = array(
             'work_id' => '', 'title' => '', 'title_ruby' => '', 'author' => '', 'author_ruby' => '',
             'category_id' => '', 'comment' => '', 'title_id' => '', 'directory_name' => '',
-            'copyright' => '', 'open' => ''
+            'copyright' => '', 'open' => date('Y-m-d') // 今日の日付をデフォルト値に設定
         );
         $data['categories'] = $this->dataManager->getCategories();
         $this->loadView('edit_work_form', $data);
     }
+    // ▲▲▲ ここまでを修正 ▲▲▲
 
     public function createWork($postData) {
         $success = $this->dataManager->addWork($postData);
@@ -140,21 +132,17 @@ class AdminController {
         }
     }
     
-    // ▼▼▼ このメソッドを修正 ▼▼▼
     public function moveCategory($category_id, $direction) {
         if (!$category_id || !$direction) {
             header('Location: admin.php?action=dashboard&tab=categories');
             exit;
         }
-
         $order_file_path = BASE_DIR_PATH . '/data/categories_order.json';
         if (!file_exists($order_file_path)) {
             die('Error: categories_order.json が見つかりません。');
         }
-
         $ordered_ids = json_decode(file_get_contents($order_file_path), true);
         $index = array_search($category_id, $ordered_ids);
-
         if ($index !== false) {
             if ($direction === 'up' && $index > 0) {
                 $temp = $ordered_ids[$index - 1];
@@ -166,10 +154,7 @@ class AdminController {
                 $ordered_ids[$index] = $temp;
             }
         }
-
         file_put_contents($order_file_path, json_encode($ordered_ids));
-        
-        // URLにパラメータを追加してリダイレクト
         header('Location: admin.php?action=dashboard&tab=categories');
         exit;
     }

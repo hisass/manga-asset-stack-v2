@@ -5,7 +5,7 @@
 class DataManager {
     private $data_path;
     private $delta_path;
-    private $order_path; // 並び順ファイルのパスを追加
+    private $order_path;
 
     private $baseData = array();
     private $deltaData = array();
@@ -14,7 +14,7 @@ class DataManager {
     public function __construct() {
         $this->data_path = BASE_DIR_PATH . '/data/sozai_v2.json';
         $this->delta_path = BASE_DIR_PATH . '/data/sozai_v2_delta.json';
-        $this->order_path = BASE_DIR_PATH . '/data/categories_order.json'; // 並び順ファイルのパス
+        $this->order_path = BASE_DIR_PATH . '/data/categories_order.json';
         $this->loadAndMergeData();
     }
 
@@ -43,8 +43,6 @@ class DataManager {
         }
 
         $this->data = $this->merge($this->baseData, $this->deltaData);
-        
-        // ▼▼▼ マージ後にカテゴリを並び替える処理を追加 ▼▼▼
         $this->sortCategories();
     }
     
@@ -59,6 +57,20 @@ class DataManager {
         if (!empty($delta['works']['added'])) {
             $mergedWorks = array_merge($mergedWorks, $delta['works']['added']);
         }
+
+        // ▼▼▼ ここからが追加部分 ▼▼▼
+        // 全ての作品に新着判定フラグを追加
+        $one_week_ago = new DateTime('-7 days');
+        foreach ($mergedWorks as &$work) {
+            $work['is_new'] = false;
+            if (!empty($work['open']) && ($work_date = DateTime::createFromFormat('Y-m-d', $work['open'])) !== false) {
+                if ($work_date >= $one_week_ago) {
+                    $work['is_new'] = true;
+                }
+            }
+        }
+        unset($work);
+        // ▲▲▲ ここまでを追加 ▲▲▲
 
         $mergedCategories = isset($base['categories']) ? $base['categories'] : array();
         if (!empty($delta['categories']['deleted'])) {
@@ -86,36 +98,25 @@ class DataManager {
 
         return array('categories' => $mergedCategories, 'works' => $mergedWorks);
     }
-
-    // ▼▼▼ カテゴリを並び替える新しいメソッドを追加 ▼▼▼
+    
     private function sortCategories() {
         $categories = $this->data['categories'];
         if (empty($categories)) return;
-
         $ordered_ids = array();
         if (file_exists($this->order_path)) {
             $ordered_ids = json_decode(file_get_contents($this->order_path), true);
         }
-
         $sorted_categories = array();
         $remaining_categories = $categories;
-
-        // orderファイルに基づいて並び替え
         foreach ($ordered_ids as $cat_id) {
             if (isset($categories[$cat_id])) {
                 $sorted_categories[$cat_id] = $categories[$cat_id];
                 unset($remaining_categories[$cat_id]);
             }
         }
-
-        // orderファイルに存在しない新しいカテゴリを末尾に追加
         $sorted_categories = array_merge($sorted_categories, $remaining_categories);
-        
-        // 新しいカテゴリ順をorderファイルに保存（初回実行時や、新カテゴリ追加時のため）
         $new_order = array_keys($sorted_categories);
         file_put_contents($this->order_path, json_encode($new_order));
-        
-        // データプロパティを更新
         $this->data['categories'] = $sorted_categories;
     }
     
@@ -128,15 +129,11 @@ class DataManager {
     }
 
     public function getCategories() { return $this->data['categories']; }
-
-    public function getCategoryById($category_id) {
-        return isset($this->data['categories'][$category_id]) ? $this->data['categories'][$category_id] : null;
-    }
-
+    public function getCategoryById($category_id) { return isset($this->data['categories'][$category_id]) ? $this->data['categories'][$category_id] : null; }
     public function getWorkById($work_id) { return isset($this->data['works'][$work_id]) ? $this->data['works'][$work_id] : null; }
     
     public function getWorks($filter_category = null, $search_keyword = null, $sort_option = null) {
-        $works = array_values($this->data['works']); 
+        $works = array_values($this->data['works']);
         if ($filter_category) {
             $works = array_filter($works, function($work) use ($filter_category) { return isset($work['category_id']) && $work['category_id'] === $filter_category; });
         }
@@ -147,7 +144,6 @@ class DataManager {
                        (isset($work['comment']) && stripos($work['comment'], $search_keyword) !== false);
             });
         }
-        
         if ($sort_option) {
             $sort_parts = explode('_', $sort_option);
             $sort_key = isset($sort_parts[0]) ? $sort_parts[0] : 'open';
