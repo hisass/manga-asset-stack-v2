@@ -12,15 +12,11 @@
     <style>
         body {
             font-family: 'Noto Sans JP', sans-serif;
-            /* 固定ヘッダーの高さに合わせて、コンテンツの開始位置を調整 */
-            /* トップバー(約84px) + カテゴリバー(約40px) */
             padding-top: 124px; 
         }
-        /* ヘッダー上段の高さを約1.5倍に */
         .navbar.bg-dark {
             min-height: 84px;
         }
-        /* ロゴ画像の高さをヘッダーの約1/3に */
         .navbar-brand img {
             max-height: 28px;
         }
@@ -32,7 +28,7 @@
     <nav class="navbar navbar-expand navbar-dark bg-dark align-items-center">
         <div class="container">
             <a class="navbar-brand" href="index.php">
-                Manga Asset Stack <small class="text-white-50">[v2 Viewer]</small>
+                <img src="assets/images/logo.svg" alt="サイトロゴ">
             </a>
             <div class="d-flex ms-auto">
                 <form class="d-flex me-3" method="GET" action="index.php">

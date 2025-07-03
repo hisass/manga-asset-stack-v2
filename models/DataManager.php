@@ -98,8 +98,10 @@ class DataManager {
 
     public function getWorkById($work_id) { return isset($this->data['works'][$work_id]) ? $this->data['works'][$work_id] : null; }
     
-    public function getWorks($filter_category = null, $search_keyword = null, $sort_option = 'open_desc') {
-        $works = array_values($this->data['works']);
+    // ▼▼▼ このメソッドを修正 ▼▼▼
+    public function getWorks($filter_category = null, $search_keyword = null, $sort_option = null) {
+        $works = array_values($this->data['works']); 
+        
         if ($filter_category) {
             $works = array_filter($works, function($work) use ($filter_category) { return isset($work['category_id']) && $work['category_id'] === $filter_category; });
         }
@@ -111,29 +113,33 @@ class DataManager {
             });
         }
         
-        $sort_parts = explode('_', $sort_option);
-        $sort_key = isset($sort_parts[0]) ? $sort_parts[0] : 'open';
-        $sort_order = isset($sort_parts[1]) ? $sort_parts[1] : 'desc';
+        // ソートオプションが指定されている場合のみ、ソート処理を実行
+        if ($sort_option) {
+            $sort_parts = explode('_', $sort_option);
+            $sort_key = isset($sort_parts[0]) ? $sort_parts[0] : 'open';
+            $sort_order = isset($sort_parts[1]) ? $sort_parts[1] : 'desc';
 
-        $allowed_keys = array('open', 'title', 'author');
-        if (!in_array($sort_key, $allowed_keys)) {
-            $sort_key = 'open';
-        }
-
-        usort($works, function($a, $b) use ($sort_key, $sort_order) {
-            $val_a = isset($a[$sort_key]) ? $a[$sort_key] : '';
-            $val_b = isset($b[$sort_key]) ? $b[$sort_key] : '';
-            if ($val_a == $val_b) return 0;
-            if ($sort_key === 'title' || $sort_key === 'author') {
-                 $result = strnatcasecmp($val_a, $val_b);
-            } else {
-                 $result = ($val_a < $val_b) ? -1 : 1;
+            $allowed_keys = array('open', 'title', 'author');
+            if (!in_array($sort_key, $allowed_keys)) {
+                $sort_key = 'open';
             }
-            return ($sort_order === 'desc') ? -$result : $result;
-        });
+
+            usort($works, function($a, $b) use ($sort_key, $sort_order) {
+                $val_a = isset($a[$sort_key]) ? $a[$sort_key] : '';
+                $val_b = isset($b[$sort_key]) ? $b[$sort_key] : '';
+                if ($val_a == $val_b) return 0;
+                if ($sort_key === 'title' || $sort_key === 'author') {
+                     $result = strnatcasecmp($val_a, $val_b);
+                } else {
+                     $result = ($val_a < $val_b) ? -1 : 1;
+                }
+                return ($sort_order === 'desc') ? -$result : $result;
+            });
+        }
 
         return $works;
     }
+    // ▲▲▲ ここまでを修正 ▲▲▲
 
     public function addWork($postData) {
         $work_id = 'work_' . uniqid(rand(), true);

@@ -12,9 +12,11 @@ class ViewerModel {
         return $this->dataManager->getCategories();
     }
 
-    public function getWorksByCategoryId($category_id, $sort_option = 'open_desc') {
+    // ▼▼▼ このメソッドを修正 ▼▼▼
+    public function getWorksByCategoryId($category_id, $sort_option = null) {
         return $this->dataManager->getWorks($category_id, null, $sort_option);
     }
+    // ▲▲▲ ここまでを修正 ▲▲▲
 
     public function getWorkById($work_id) {
         return $this->dataManager->getWorkById($work_id);
@@ -75,7 +77,7 @@ class ViewerModel {
                             'filename' => $file,
                             'size_str' => $size_str,
                             'date_str' => $date_str,
-                            'server_path' => $file_path // ★サーバー上のフルパスを追加
+                            'server_path' => $file_path
                         );
                     }
                 }
