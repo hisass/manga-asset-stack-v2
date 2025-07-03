@@ -1,5 +1,5 @@
 <?php
-header('Content-Type: text/html; charset=utf-8'); // <-- この行をファイルの先頭に追加
+header('Content-Type: text/html; charset=utf-8');
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -48,6 +48,14 @@ switch ($action) {
     case 'save_category':
         $controller->saveCategory($_POST);
         break;
+        
+    // ▼▼▼ このcaseを追加 ▼▼▼
+    case 'move_category':
+        $category_id = isset($_GET['id']) ? $_GET['id'] : null;
+        $direction = isset($_GET['direction']) ? $_GET['direction'] : null;
+        $controller->moveCategory($category_id, $direction);
+        break;
+    // ▲▲▲ ここまでを追加 ▲▲▲
         
     case 'dashboard':
     default:

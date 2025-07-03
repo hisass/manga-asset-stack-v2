@@ -5,6 +5,7 @@
 class DataManager {
     private $data_path;
     private $delta_path;
+    private $order_path; // 並び順ファイルのパスを追加
 
     private $baseData = array();
     private $deltaData = array();
@@ -13,6 +14,7 @@ class DataManager {
     public function __construct() {
         $this->data_path = BASE_DIR_PATH . '/data/sozai_v2.json';
         $this->delta_path = BASE_DIR_PATH . '/data/sozai_v2_delta.json';
+        $this->order_path = BASE_DIR_PATH . '/data/categories_order.json'; // 並び順ファイルのパス
         $this->loadAndMergeData();
     }
 
@@ -41,6 +43,9 @@ class DataManager {
         }
 
         $this->data = $this->merge($this->baseData, $this->deltaData);
+        
+        // ▼▼▼ マージ後にカテゴリを並び替える処理を追加 ▼▼▼
+        $this->sortCategories();
     }
     
     private function merge($base, $delta) {
@@ -81,6 +86,38 @@ class DataManager {
 
         return array('categories' => $mergedCategories, 'works' => $mergedWorks);
     }
+
+    // ▼▼▼ カテゴリを並び替える新しいメソッドを追加 ▼▼▼
+    private function sortCategories() {
+        $categories = $this->data['categories'];
+        if (empty($categories)) return;
+
+        $ordered_ids = array();
+        if (file_exists($this->order_path)) {
+            $ordered_ids = json_decode(file_get_contents($this->order_path), true);
+        }
+
+        $sorted_categories = array();
+        $remaining_categories = $categories;
+
+        // orderファイルに基づいて並び替え
+        foreach ($ordered_ids as $cat_id) {
+            if (isset($categories[$cat_id])) {
+                $sorted_categories[$cat_id] = $categories[$cat_id];
+                unset($remaining_categories[$cat_id]);
+            }
+        }
+
+        // orderファイルに存在しない新しいカテゴリを末尾に追加
+        $sorted_categories = array_merge($sorted_categories, $remaining_categories);
+        
+        // 新しいカテゴリ順をorderファイルに保存（初回実行時や、新カテゴリ追加時のため）
+        $new_order = array_keys($sorted_categories);
+        file_put_contents($this->order_path, json_encode($new_order));
+        
+        // データプロパティを更新
+        $this->data['categories'] = $sorted_categories;
+    }
     
     private function saveDeltaData() {
         $json_string = json_encode($this->deltaData);
@@ -98,10 +135,8 @@ class DataManager {
 
     public function getWorkById($work_id) { return isset($this->data['works'][$work_id]) ? $this->data['works'][$work_id] : null; }
     
-    // ▼▼▼ このメソッドを修正 ▼▼▼
     public function getWorks($filter_category = null, $search_keyword = null, $sort_option = null) {
         $works = array_values($this->data['works']); 
-        
         if ($filter_category) {
             $works = array_filter($works, function($work) use ($filter_category) { return isset($work['category_id']) && $work['category_id'] === $filter_category; });
         }
@@ -113,17 +148,14 @@ class DataManager {
             });
         }
         
-        // ソートオプションが指定されている場合のみ、ソート処理を実行
         if ($sort_option) {
             $sort_parts = explode('_', $sort_option);
             $sort_key = isset($sort_parts[0]) ? $sort_parts[0] : 'open';
             $sort_order = isset($sort_parts[1]) ? $sort_parts[1] : 'desc';
-
             $allowed_keys = array('open', 'title', 'author');
             if (!in_array($sort_key, $allowed_keys)) {
                 $sort_key = 'open';
             }
-
             usort($works, function($a, $b) use ($sort_key, $sort_order) {
                 $val_a = isset($a[$sort_key]) ? $a[$sort_key] : '';
                 $val_b = isset($b[$sort_key]) ? $b[$sort_key] : '';
@@ -136,10 +168,8 @@ class DataManager {
                 return ($sort_order === 'desc') ? -$result : $result;
             });
         }
-
         return $works;
     }
-    // ▲▲▲ ここまでを修正 ▲▲▲
 
     public function addWork($postData) {
         $work_id = 'work_' . uniqid(rand(), true);
