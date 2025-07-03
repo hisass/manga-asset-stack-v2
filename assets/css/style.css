@@ -48,9 +48,9 @@
     background-color: rgba(0,0,0,0.05);
 }
 
-/* フッターを固定するためのスタイル */
-.footer-fixed {
+.site-footer {
     position: fixed;
+    left: 0;
     bottom: 0;
     width: 100%;
     z-index: 1020; /* ヘッダーよりは下、コンテンツよりは上 */
@@ -100,4 +100,11 @@ body {
 #page-top-btn.show {
     opacity: 1;
     visibility: visible;
+}
+
+/* ダークモードボタンのアイコンを中央揃えにする */
+#theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }

@@ -38,10 +38,12 @@ class WorkController {
         $this->loadView('home', $data);
     }
 
+    // ▼▼▼ このメソッドを修正 ▼▼▼
     public function detail($work_id) {
         if (!$work_id) { $this->showNotFound(); return; }
         $work = $this->viewerModel->getWorkById($work_id);
         if (!$work) { $this->showNotFound(); return; }
+
         $category_name = null;
         if (!empty($work['category_id'])) {
             $category = $this->viewerModel->getCategoryById($work['category_id']);
@@ -49,12 +51,29 @@ class WorkController {
                 $category_name = $category['name'];
             }
         }
+        
+        // 最終更新日時を取得するロジックを追加
+        $last_updated = null;
+        if (!empty($work['directory_name'])) {
+            // v1, v2両方のパスをチェック
+            $path_v1 = ASSET_PATH_V1 . '/' . $work['directory_name'];
+            $path_v2 = ASSET_PATH_V2 . '/' . $work['directory_name'];
+            if (is_dir($path_v1)) {
+                $last_updated = date("Y-m-d H:i:s", filemtime($path_v1));
+            } elseif (is_dir($path_v2)) {
+                $last_updated = date("Y-m-d H:i:s", filemtime($path_v2));
+            }
+        }
+        
+        $data['last_updated'] = $last_updated;
         $data['category_name'] = $category_name;
         $data['title'] = '作品詳細: ' . htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8');
         $data['work'] = $work;
         $data['assets'] = $this->viewerModel->getAssetsForWork($work);
+        
         $this->loadView('detail', $data);
     }
+    // ▲▲▲ ここまでを修正 ▲▲▲
 
     public function categoryPage($category_id) {
         if (!$category_id) { $this->showNotFound(); return; }
@@ -100,42 +119,30 @@ class WorkController {
         $this->loadView('author_list', $data);
     }
 
-    // ▼▼▼ このメソッドを修正 ▼▼▼
     public function newArrivals() {
         $data['title'] = '新着作品';
         $data['page_specific_category'] = array('name' => '新着作品', 'id' => 'new');
-
-        // 全作品を公開日の新しい順で取得
         $all_works = $this->viewerModel->getWorksByCategoryId(null, 'open_desc');
-        
         $new_works = array();
         $one_week_ago = new DateTime('-7 days');
-
         foreach ($all_works as $work) {
-            // 公開日があり、かつ日付として有効かチェック
             if (!empty($work['open']) && ($work_date = DateTime::createFromFormat('Y-m-d', $work['open'])) !== false) {
-                // 1週間以内の作品か判定
                 if ($work_date >= $one_week_ago) {
                     $new_works[] = $work;
                 }
             }
         }
-        
-        // サムネイルとアセット数を取得
         foreach ($new_works as &$work) {
             $assets = $this->viewerModel->getAssetsForWork($work);
             $work['thumbnail_url'] = !empty($assets) ? $assets[0]['url'] : null; 
             $work['asset_count'] = count($assets);
         }
         unset($work);
-        
         $data['works'] = $new_works;
-        $data['current_sort'] = 'open_desc'; // ソートは公開日順で固定
+        $data['current_sort'] = 'open_desc';
         $data['category_id'] = 'new';
-        
         $this->loadView('category_list', $data);
     }
-    // ▲▲▲ ここまでを修正 ▲▲▲
     
     private function showNotFound() {
         header("HTTP/1.0 404 Not Found");
