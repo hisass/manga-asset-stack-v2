@@ -1,7 +1,7 @@
 <?php
 /**
  * views/viewer/home.php
- * トップページのテンプレート（カード表示・サムネイル付き）
+ * トップページのテンプレート
  */
 ?>
 
@@ -13,16 +13,14 @@ $categories_for_home = array_filter($all_categories, function($cat) {
 ?>
 
 <?php foreach ($categories_for_home as $category): ?>
-    <?php // Check if this category has any works to display
-    if (!empty($works_by_category[$category['id']])): ?>
+    <?php if (!empty($works_by_category[$category['id']])): ?>
         <section class="mb-5">
             <a href="index.php?page=category&id=<?= urlencode($category['id']) ?>" class="text-decoration-none category-title-link">
-                <h2><?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?></h2>
-            </a>
-            <hr>
+                <h2><?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?> <span class="text-muted small">&gt;</span></h2>
+                </a>
+            <hr class="mt-0">
             <div class="row">
-                <?php // Now loop through the works for this specific category
-                foreach ($works_by_category[$category['id']] as $work): ?>
+                <?php foreach ($works_by_category[$category['id']] as $work): ?>
                     <div class="col-6 col-md-4 col-lg-3 mb-4">
                         <a href="index.php?page=detail&id=<?= urlencode($work['work_id']) ?>" class="card-link text-decoration-none text-dark">
                             <div class="card h-100">
@@ -33,8 +31,8 @@ $categories_for_home = array_filter($all_categories, function($cat) {
                                         <small class="text-muted">No Image</small>
                                     </div>
                                 <?php endif; ?>
-                                <div class="card-body">
-                                    <h6 class="card-title fw-bold"><?= htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8') ?></h6>
+                                <div class="card-body p-3">
+                                    <h6 class="card-title work-title-home fw-bold"><?= htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8') ?></h6>
                                     <p class="card-text small text-muted"><?= htmlspecialchars($work['author'], ENT_QUOTES, 'UTF-8') ?></p>
                                 </div>
                             </div>

@@ -12,24 +12,35 @@
     <style>
         body {
             font-family: 'Noto Sans JP', sans-serif;
-            padding-top: 106px; 
+            /* 固定ヘッダーの高さに合わせて、コンテンツの開始位置を調整 */
+            /* トップバー(約84px) + カテゴリバー(約40px) */
+            padding-top: 124px; 
         }
-        .category-nav .nav-link { font-size: 0.8rem; padding-top: 0.2rem; padding-bottom: 0.2rem; }
+        /* ヘッダー上段の高さを約1.5倍に */
+        .navbar.bg-dark {
+            min-height: 84px;
+        }
+        /* ロゴ画像の高さをヘッダーの約1/3に */
+        .navbar-brand img {
+            max-height: 28px;
+        }
     </style>
 </head>
 <body class="d-flex flex-column vh-100">
 
 <header class="fixed-top">
-    <nav class="navbar navbar-dark bg-dark">
+    <nav class="navbar navbar-expand navbar-dark bg-dark align-items-center">
         <div class="container">
             <a class="navbar-brand" href="index.php">
                 Manga Asset Stack <small class="text-white-50">[v2 Viewer]</small>
             </a>
-            <form class="d-flex" method="GET" action="index.php">
-                <input type="hidden" name="page" value="search">
-                <input class="form-control me-2" type="search" name="keyword" placeholder="キーワード検索" aria-label="Search">
-                <button class="btn btn-outline-success" type="submit">検索</button>
-            </form>
+            <div class="d-flex ms-auto">
+                <form class="d-flex me-3" method="GET" action="index.php">
+                    <input type="hidden" name="page" value="search">
+                    <input class="form-control me-2" type="search" name="keyword" placeholder="キーワード検索" aria-label="Search">
+                    <button class="btn btn-outline-success" type="submit">検索</button>
+                </form>
+                </div>
         </div>
     </nav>
     <nav class="navbar navbar-expand-lg bg-body-secondary py-1 category-nav">
@@ -40,18 +51,15 @@
                         <?php foreach ($all_categories as $category): ?>
                             <li class="nav-item">
                                 <?php
-                                    // 「NEW」ボタンか、通常のカテゴリかでリンク先を切り替える
                                     $link_url = isset($category['url']) 
                                                 ? $category['url'] 
                                                 : 'index.php?page=category&id=' . urlencode($category['id']);
                                 ?>
                                 <a class="nav-link small" href="<?= $link_url ?>">
                                     <?php
-                                        // 「NEW」ボタンの場合は、HTMLをそのまま表示
                                         if ($category['id'] === 'new') {
                                             echo $category['name']; 
                                         } else {
-                                        // 通常のカテゴリは、エイリアスがあればエイリアスを、なければ名前を表示
                                             echo htmlspecialchars(!empty($category['alias']) ? $category['alias'] : $category['name'], ENT_QUOTES, 'UTF-8');
                                         }
                                     ?>
