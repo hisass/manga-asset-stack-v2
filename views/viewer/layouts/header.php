@@ -13,24 +13,19 @@
         body {
             font-family: 'Noto Sans JP', sans-serif;
             padding-top: 124px; 
+            /* ▼▼▼ フッターの高さ分の余白を再度設定 ▼▼▼ */
             padding-bottom: 80px; 
         }
         .navbar.bg-dark {
             min-height: 84px;
         }
-        /* ▼▼▼ この部分を修正 ▼▼▼ */
         .navbar-brand img {
-            height: 46px; /* max-heightからheightに変更して、高さを固定 */
-            width: auto;  /* 幅は高さに合わせて自動調整 */
+            height: 28px;
+            width: auto;
         }
-        /* ヘッダーのロゴ表示位置を少し下げる */
-        .navbar-brand {
-            padding-top: 18px; /* この数値を増やすと、さらに下に移動します */
-        }
-        /* ▲▲▲ ここまでを修正 ▲▲▲ */
     </style>
 </head>
-<body class="d-flex flex-column vh-100">
+<body>
 
 <header class="fixed-top">
     <nav class="navbar navbar-expand navbar-dark bg-dark align-items-center">

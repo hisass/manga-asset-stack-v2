@@ -48,14 +48,6 @@
     background-color: rgba(0,0,0,0.05);
 }
 
-.site-footer {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    z-index: 1020; /* ヘッダーよりは下、コンテンツよりは上 */
-}
-
 /* 固定フッター分の余白をbodyの下に確保 */
 body {
     padding-bottom: 60px; /* フッターの高さ分 */
@@ -107,4 +99,12 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.site-footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    z-index: 1020;
 }
